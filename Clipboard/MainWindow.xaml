@@ -1,0 +1,159 @@
+﻿<Window x:Class="ClipboardApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="熔岩超级剪贴板"
+        Height="700" Width="1200"
+        MinHeight="500" MinWidth="800"
+        FontFamily="Microsoft YaHei"
+        Closing="MainWindow_OnClosing"
+        StateChanged="MainWindow_OnStateChanged">
+    <Window.Resources>
+        <Style x:Key="HistoryItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+            <Setter Property="Background" Value="#FAFAFA"/>
+            <Setter Property="BorderBrush" Value="#EEEEEE"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3"
+                                Padding="{TemplateBinding Padding}"
+                                Margin="{TemplateBinding Margin}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E8F5E9"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#4CAF50"/>
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#F5F5F5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="文件(_F)">
+                <MenuItem x:Name="AutostartMenuItem" Header="开机自启动(_S)" IsCheckable="True"
+                          Click="AutostartMenuItem_OnClick"/>
+                <MenuItem Header="快捷键设置(_K)" Click="HotkeySettings_OnClick"/>
+                <Separator/>
+                <MenuItem Header="退出(_X)" InputGestureText="Ctrl+Q" Click="Quit_OnClick"/>
+            </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于(_A)" Click="About_OnClick"/>
+            </MenuItem>
+        </Menu>
+
+        <Grid Margin="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left panel -->
+            <DockPanel Grid.Column="0" Margin="0,0,5,0">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <TextBox x:Name="SearchBox"
+                             DockPanel.Dock="Left"
+                             Width="220"
+                             Height="28"
+                             VerticalContentAlignment="Center"
+                             Padding="5,0"
+                             ToolTip="搜索历史记录..."
+                             TextChanged="Filter_OnChanged"/>
+                    <ComboBox x:Name="CategoryCombo"
+                              DockPanel.Dock="Left"
+                              Width="110"
+                              Height="28"
+                              Margin="8,0,0,0"
+                              SelectedIndex="0"
+                              SelectionChanged="Filter_OnChanged">
+                        <ComboBoxItem Content="全部"/>
+                        <ComboBoxItem Content="仅文本"/>
+                        <ComboBoxItem Content="仅图片"/>
+                    </ComboBox>
+                    <ToggleButton x:Name="MonitorButton"
+                                  DockPanel.Dock="Left"
+                                  Content="关闭监听"
+                                  IsChecked="True"
+                                  Width="90"
+                                  Height="28"
+                                  Margin="8,0,0,0"
+                                  Click="MonitorButton_OnClick"/>
+                    <TextBlock x:Name="StatusLabel"
+                               Text="当前状态: 正在监听"
+                               Foreground="#4CAF50"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"/>
+                </DockPanel>
+
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button x:Name="ClearButton" Content="清空 ▾" MinWidth="70" Click="ClearButton_OnClick"/>
+                    <Button Content="复制" MinWidth="70" Margin="6,0,0,0" Click="Copy_OnClick"/>
+                    <Button Content="导出" MinWidth="70" Margin="6,0,0,0" Click="Export_OnClick"/>
+                    <Button Content="关于" MinWidth="70" Margin="6,0,0,0" HorizontalAlignment="Right" Click="About_OnClick"/>
+                </StackPanel>
+
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="历史记录:" FontWeight="Bold" Margin="0,0,0,4"/>
+                    <ListBox x:Name="HistoryList"
+                             ItemContainerStyle="{StaticResource HistoryItemStyle}"
+                             BorderBrush="#CCCCCC"
+                             BorderThickness="1"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionChanged="HistoryList_OnSelectionChanged"
+                             MouseDoubleClick="HistoryList_OnMouseDoubleClick"
+                             PreviewMouseRightButtonUp="HistoryList_OnPreviewMouseRightButtonUp">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayText}" TextWrapping="Wrap" FontSize="13"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </DockPanel>
+
+            <!-- Right panel -->
+            <DockPanel Grid.Column="1">
+                <TextBlock DockPanel.Dock="Top" Text="内容预览:" FontWeight="Bold" Margin="0,0,0,4"/>
+                <Grid>
+                    <TextBox x:Name="PreviewText"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto"
+                             BorderBrush="#CCCCCC"
+                             BorderThickness="1"
+                             Padding="8"
+                             Visibility="Collapsed"/>
+                    <ScrollViewer x:Name="ImageScroll"
+                                  Visibility="Collapsed"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto"
+                                  BorderBrush="#CCCCCC"
+                                  BorderThickness="1"
+                                  Background="White">
+                        <Image x:Name="PreviewImage"
+                               Stretch="None"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               MouseRightButtonUp="PreviewImage_OnMouseRightButtonUp"/>
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>
