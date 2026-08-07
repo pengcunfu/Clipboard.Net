@@ -40,6 +40,7 @@ public partial class MainWindow : Window
 
         HistoryList.ItemsSource = _history.Entries;
         _history.Load();
+        UpdateSearchPlaceholder();
 
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _saveTimer.Tick += (_, _) => _history.Save();
@@ -241,10 +242,22 @@ public partial class MainWindow : Window
     {
         Show();
         WindowState = WindowState.Normal;
+        CenterOnScreen();
         Activate();
         Topmost = true;
         Topmost = false;
         Focus();
+    }
+
+    private void CenterOnScreen()
+    {
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        var screen = handle == IntPtr.Zero
+            ? Forms.Screen.PrimaryScreen
+            : Forms.Screen.FromHandle(handle);
+        var area = screen.WorkingArea;
+        Left = area.Left + (area.Width - Width) / 2;
+        Top = area.Top + (area.Height - Height) / 2;
     }
 
     private void QuitApp()
@@ -571,9 +584,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Filter_OnChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
+    private void Filter_OnChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateSearchPlaceholder();
+        ApplyFilter();
+    }
 
     private void Filter_OnChanged(object sender, SelectionChangedEventArgs e) => ApplyFilter();
+
+    private void UpdateSearchPlaceholder()
+    {
+        if (SearchBox is null || SearchPlaceholder is null)
+            return;
+        SearchPlaceholder.Visibility = string.IsNullOrEmpty(SearchBox.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
 
     private void ApplyFilter()
     {

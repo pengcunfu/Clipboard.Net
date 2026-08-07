@@ -4,6 +4,7 @@
         Title="熔岩超级剪贴板"
         Height="700" Width="1200"
         MinHeight="500" MinWidth="800"
+        WindowStartupLocation="CenterScreen"
         FontFamily="Microsoft YaHei"
         Closing="MainWindow_OnClosing"
         StateChanged="MainWindow_OnStateChanged">
@@ -66,19 +67,24 @@
             <!-- Left panel -->
             <DockPanel Grid.Column="0" Margin="0,0,5,0">
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
-                    <TextBox x:Name="SearchBox"
-                             DockPanel.Dock="Left"
-                             Width="220"
-                             Height="28"
-                             VerticalContentAlignment="Center"
-                             Padding="5,0"
-                             ToolTip="搜索历史记录..."
-                             TextChanged="Filter_OnChanged"/>
+                    <Grid DockPanel.Dock="Left" Width="220" Height="28">
+                        <TextBox x:Name="SearchBox"
+                                 VerticalContentAlignment="Center"
+                                 Padding="5,0"
+                                 TextChanged="Filter_OnChanged"/>
+                        <TextBlock x:Name="SearchPlaceholder"
+                                   Text="搜索历史记录..."
+                                   Foreground="Gray"
+                                   VerticalAlignment="Center"
+                                   Margin="7,0,0,0"
+                                   IsHitTestVisible="False"/>
+                    </Grid>
                     <ComboBox x:Name="CategoryCombo"
                               DockPanel.Dock="Left"
                               Width="110"
                               Height="28"
                               Margin="8,0,0,0"
+                              VerticalContentAlignment="Center"
                               SelectedIndex="0"
                               SelectionChanged="Filter_OnChanged">
                         <ComboBoxItem Content="全部"/>
