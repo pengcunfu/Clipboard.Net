@@ -4,11 +4,12 @@
   Build and publish Clipboard.Net to the publish folder.
 .DESCRIPTION
   By default increments BuildNumber and syncs VersionInfo.cs / Clipboard.csproj.
-  Produces a self-contained single-file exe unless -FrameworkDependent is set.
+  Produces a framework-dependent build (does not bundle .NET runtime).
+  Pass -SelfContained for a standalone single-file exe that includes the runtime.
 .EXAMPLE
   .\scripts\publish.ps1
   .\scripts\publish.ps1 -NoBump
-  .\scripts\publish.ps1 -FrameworkDependent
+  .\scripts\publish.ps1 -SelfContained
   .\scripts\publish.ps1 -Runtime win-arm64 -OutputDir D:\dist\clipboard
 #>
 [CmdletBinding()]
@@ -18,8 +19,8 @@ param(
 
     [string]$Runtime = "win-x64",
 
-    # Framework-dependent (requires installed .NET runtime). Default is self-contained single-file.
-    [switch]$FrameworkDependent,
+    # Bundle .NET runtime into a single-file exe. Default is framework-dependent (no runtime).
+    [switch]$SelfContained,
 
     [switch]$NoBump,
 
@@ -102,12 +103,16 @@ else {
     Write-Host "==> Keeping version: $fullVersion" -ForegroundColor Cyan
 }
 
-$selfContained = -not $FrameworkDependent
-$scFlag = if ($selfContained) { "true" } else { "false" }
-$singleFile = if ($selfContained) { "true" } else { "false" }
+$scFlag = if ($SelfContained) { "true" } else { "false" }
+$singleFile = if ($SelfContained) { "true" } else { "false" }
 
 Write-Host "==> Publishing $Configuration -> $OutputDir" -ForegroundColor Cyan
 Write-Host "    Runtime=$Runtime  SelfContained=$scFlag  SingleFile=$singleFile" -ForegroundColor DarkGray
+
+# Clear previous publish output so leftover self-contained files are not mixed in.
+if (Test-Path -LiteralPath $OutputDir) {
+    Remove-Item -LiteralPath $OutputDir -Recurse -Force
+}
 
 $publishArgs = @(
     "publish", $Project,
@@ -115,10 +120,15 @@ $publishArgs = @(
     "-r", $Runtime,
     "--self-contained", $scFlag,
     "-o", $OutputDir,
-    "/p:PublishSingleFile=$singleFile",
-    "/p:IncludeNativeLibrariesForSelfExtract=true",
-    "/p:EnableCompressionInSingleFile=true"
+    "/p:PublishSingleFile=$singleFile"
 )
+
+if ($SelfContained) {
+    $publishArgs += @(
+        "/p:IncludeNativeLibrariesForSelfExtract=true",
+        "/p:EnableCompressionInSingleFile=true"
+    )
+}
 
 dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) {
