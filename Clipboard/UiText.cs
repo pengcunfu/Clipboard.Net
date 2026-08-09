@@ -16,9 +16,11 @@ public static class UiText
     public const string Tip = "提示";
     public const string ImageMissing = "图片文件不存在！";
     public const string SaveImage = "保存图片";
+    public const string SaveText = "保存文本";
     public const string ImageSaved = "图片已保存到：";
+    public const string TextSaved = "文本已保存到：";
     public const string SaveSuccess = "保存成功";
-    public const string SaveFailed = "保存图片失败：";
+    public const string SaveFailed = "保存失败：";
     public const string SaveFailedTitle = "保存失败";
     public const string ConfirmDelete = "确定要删除这条记录吗？";
     public const string ConfirmDeleteTitle = "确认删除";

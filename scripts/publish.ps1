@@ -1,13 +1,14 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  缂栬瘧骞跺彂甯冦€岀啍宀╄秴绾у壀璐存澘銆嶅埌 publish 鐩綍銆?
+  Build and publish Clipboard.Net to the publish folder.
 .DESCRIPTION
-  榛樿浼氶€掑 BuildNumber锛屽苟鍚屾鏇存柊 VersionInfo.cs 涓?Clipboard.csproj 涓殑鐗堟湰瀛楁銆?
+  By default increments BuildNumber and syncs VersionInfo.cs / Clipboard.csproj.
+  Produces a self-contained single-file exe unless -FrameworkDependent is set.
 .EXAMPLE
   .\scripts\publish.ps1
   .\scripts\publish.ps1 -NoBump
-  .\scripts\publish.ps1 -SelfContained
+  .\scripts\publish.ps1 -FrameworkDependent
   .\scripts\publish.ps1 -Runtime win-arm64 -OutputDir D:\dist\clipboard
 #>
 [CmdletBinding()]
@@ -17,7 +18,8 @@ param(
 
     [string]$Runtime = "win-x64",
 
-    [switch]$SelfContained,
+    # Framework-dependent (requires installed .NET runtime). Default is self-contained single-file.
+    [switch]$FrameworkDependent,
 
     [switch]$NoBump,
 
@@ -35,22 +37,22 @@ if (-not $OutputDir) {
 }
 
 if (-not (Test-Path $Project)) {
-    throw "鏈壘鍒伴」鐩枃浠? $Project"
+    throw "Project file not found: $Project"
 }
 if (-not (Test-Path $VersionInfoPath)) {
-    throw "鏈壘鍒扮増鏈枃浠? $VersionInfoPath"
+    throw "Version file not found: $VersionInfoPath"
 }
 
 function Get-VersionState {
     $cs = Get-Content -LiteralPath $VersionInfoPath -Raw -Encoding UTF8
 
     if ($cs -notmatch 'public const string Version = "([^"]+)";') {
-        throw "鏃犳硶浠?VersionInfo.cs 瑙ｆ瀽 Version"
+        throw "Failed to parse Version from VersionInfo.cs"
     }
     $version = $Matches[1]
 
     if ($cs -notmatch 'public const int BuildNumber = (\d+);') {
-        throw "鏃犳硶浠?VersionInfo.cs 瑙ｆ瀽 BuildNumber"
+        throw "Failed to parse BuildNumber from VersionInfo.cs"
     }
     $build = [int]$Matches[1]
 
@@ -93,17 +95,19 @@ if (-not $NoBump) {
     $build++
     $builtAt = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $fullVersion = Update-VersionFiles -Version $version -BuildNumber $build -BuiltAt $builtAt
-    Write-Host "==> 鐗堟湰閫掑: $fullVersion  (BuiltAt $builtAt)" -ForegroundColor Cyan
+    Write-Host "==> Bumped version: $fullVersion  (BuiltAt $builtAt)" -ForegroundColor Cyan
 }
 else {
     $fullVersion = $state.FullVersion
-    Write-Host "==> 淇濇寔鐗堟湰: $fullVersion" -ForegroundColor Cyan
+    Write-Host "==> Keeping version: $fullVersion" -ForegroundColor Cyan
 }
 
-$scFlag = if ($SelfContained) { "true" } else { "false" }
+$selfContained = -not $FrameworkDependent
+$scFlag = if ($selfContained) { "true" } else { "false" }
+$singleFile = if ($selfContained) { "true" } else { "false" }
 
-Write-Host "==> 鍙戝竷 Release -> $OutputDir" -ForegroundColor Cyan
-Write-Host "    Runtime=$Runtime  SelfContained=$scFlag" -ForegroundColor DarkGray
+Write-Host "==> Publishing $Configuration -> $OutputDir" -ForegroundColor Cyan
+Write-Host "    Runtime=$Runtime  SelfContained=$scFlag  SingleFile=$singleFile" -ForegroundColor DarkGray
 
 $publishArgs = @(
     "publish", $Project,
@@ -111,12 +115,14 @@ $publishArgs = @(
     "-r", $Runtime,
     "--self-contained", $scFlag,
     "-o", $OutputDir,
-    "/p:PublishSingleFile=false"
+    "/p:PublishSingleFile=$singleFile",
+    "/p:IncludeNativeLibrariesForSelfExtract=true",
+    "/p:EnableCompressionInSingleFile=true"
 )
 
 dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) {
-    throw "鍙戝竷澶辫触 (exit $LASTEXITCODE)"
+    throw "Publish failed (exit $LASTEXITCODE)"
 }
 
 $projXml = Get-Content -LiteralPath $Project -Raw -Encoding UTF8
@@ -130,16 +136,16 @@ else {
 $exePath = Join-Path $OutputDir $exeName
 if (Test-Path -LiteralPath $exePath) {
     $sizeMb = [math]::Round((Get-Item -LiteralPath $exePath).Length / 1MB, 2)
-    Write-Host "==> 瀹屾垚: $exePath ($sizeMb MB)  v$fullVersion" -ForegroundColor Green
+    Write-Host "==> Done: $exePath ($sizeMb MB)  v$fullVersion" -ForegroundColor Green
 }
 else {
     $fallback = Get-ChildItem -LiteralPath $OutputDir -Filter *.exe -File -ErrorAction SilentlyContinue |
         Select-Object -First 1
     if ($fallback) {
         $sizeMb = [math]::Round($fallback.Length / 1MB, 2)
-        Write-Host "==> 瀹屾垚: $($fallback.FullName) ($sizeMb MB)  v$fullVersion" -ForegroundColor Green
+        Write-Host "==> Done: $($fallback.FullName) ($sizeMb MB)  v$fullVersion" -ForegroundColor Green
     }
     else {
-        Write-Host "==> 瀹屾垚: $OutputDir  v$fullVersion" -ForegroundColor Green
+        Write-Host "==> Done: $OutputDir  v$fullVersion" -ForegroundColor Green
     }
 }

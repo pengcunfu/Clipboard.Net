@@ -26,7 +26,7 @@ public static class AutostartService
         try
         {
             var exe = Environment.ProcessPath ??
-                      Path.Combine(AppPaths.AppRoot, "熔岩超级剪贴板.exe");
+                      Path.Combine(AppPaths.AppRoot, "Clipboard.exe");
             using var key = Registry.CurrentUser.OpenSubKey(RunKey, true)
                             ?? Registry.CurrentUser.CreateSubKey(RunKey);
             key.SetValue(ValueName, $"\"{exe}\"");

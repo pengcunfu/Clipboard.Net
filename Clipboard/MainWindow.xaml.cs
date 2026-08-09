@@ -255,6 +255,9 @@ public partial class MainWindow : Window
         var screen = handle == IntPtr.Zero
             ? Forms.Screen.PrimaryScreen
             : Forms.Screen.FromHandle(handle);
+        if (screen is null)
+            return;
+
         var area = screen.WorkingArea;
         Left = area.Left + (area.Width - Width) / 2;
         Top = area.Top + (area.Height - Height) / 2;
@@ -358,9 +361,12 @@ public partial class MainWindow : Window
         var menu = new ContextMenu();
         var copy = new MenuItem { Header = UiText.Copy };
         copy.Click += (_, _) => CopySelected();
+        var save = new MenuItem { Header = UiText.SaveAs };
+        save.Click += (_, _) => SaveEntry(entry);
         var delete = new MenuItem { Header = UiText.Delete };
         delete.Click += (_, _) => DeleteEntry(entry);
         menu.Items.Add(copy);
+        menu.Items.Add(save);
         menu.Items.Add(new Separator());
         menu.Items.Add(delete);
         menu.IsOpen = true;
@@ -376,7 +382,7 @@ public partial class MainWindow : Window
         var copy = new MenuItem { Header = UiText.CopyImage };
         copy.Click += (_, _) => CopySelected();
         var save = new MenuItem { Header = UiText.SaveAs };
-        save.Click += (_, _) => SaveCurrentImage();
+        save.Click += (_, _) => SaveEntry(_currentImageEntry);
         menu.Items.Add(copy);
         menu.Items.Add(new Separator());
         menu.Items.Add(save);
@@ -419,12 +425,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SaveCurrentImage()
+    private void SaveEntry(ClipboardEntry entry)
     {
-        if (_currentImageEntry is null)
-            return;
+        if (entry.IsImage)
+            SaveImageEntry(entry);
+        else
+            SaveTextEntry(entry);
+    }
 
-        var path = AppPaths.ResolveImagePath(_currentImageEntry.ImagePath);
+    private void SaveImageEntry(ClipboardEntry entry)
+    {
+        var path = AppPaths.ResolveImagePath(entry.ImagePath);
         if (!File.Exists(path))
         {
             MessageBox.Show(this, UiText.ImageMissing, UiText.Tip, MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -435,7 +446,7 @@ public partial class MainWindow : Window
         {
             Title = UiText.SaveImage,
             FileName = Path.GetFileName(path),
-            Filter = "Images (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp",
+            Filter = "Images (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|PNG (*.png)|*.png|JPEG (*.jpg;*.jpeg)|*.jpg;*.jpeg|BMP (*.bmp)|*.bmp",
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         };
 
@@ -446,6 +457,37 @@ public partial class MainWindow : Window
         {
             File.Copy(path, dialog.FileName, true);
             MessageBox.Show(this, UiText.ImageSaved + "\n" + dialog.FileName, UiText.SaveSuccess,
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, UiText.SaveFailed + "\n" + ex.Message, UiText.SaveFailedTitle,
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void SaveTextEntry(ClipboardEntry entry)
+    {
+        var text = entry.Text ?? string.Empty;
+        var stamp = string.IsNullOrWhiteSpace(entry.Timestamp)
+            ? DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss")
+            : entry.Timestamp.Replace(':', '-').Replace(' ', '_');
+
+        var dialog = new SaveFileDialog
+        {
+            Title = UiText.SaveText,
+            FileName = $"clipboard_{stamp}.txt",
+            Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        };
+
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            File.WriteAllText(dialog.FileName, text);
+            MessageBox.Show(this, UiText.TextSaved + "\n" + dialog.FileName, UiText.SaveSuccess,
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
