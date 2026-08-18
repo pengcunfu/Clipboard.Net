@@ -21,13 +21,13 @@ dotnet run --project Clipboard
 
 ## 数据目录
 
-运行后数据写在可执行文件旁的 `data/`：
+用户数据写在文档目录下的 `FNSoftware/Clipboard/`（例如 `C:\Users\<用户>\Documents\FNSoftware\Clipboard`）：
 
 - `config.json` — 热键与自启动配置
 - `clipboard_history.json` — 历史记录
 - `clipboard_images/` — 图片文件
 
-格式与原 Python 版兼容，可将原 `data/` 目录复制到输出目录旁直接使用。
+启动时会自动把旧位置（程序目录或程序目录下的 `data/`）中的上述文件迁移过去。
 
 ## 发布
 

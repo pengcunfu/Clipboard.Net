@@ -35,7 +35,6 @@ public partial class MainWindow : Window
         InitializeComponent();
         _hotkey = new HotkeyService(this);
 
-        AppPaths.MigrateLegacyData();
         TrySetWindowIcon();
 
         HistoryList.ItemsSource = _history.Entries;
