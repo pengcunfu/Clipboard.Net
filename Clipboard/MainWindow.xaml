@@ -13,8 +13,13 @@
             <Setter Property="Padding" Value="8"/>
             <Setter Property="Margin" Value="0,0,0,2"/>
             <Setter Property="Background" Value="#FAFAFA"/>
-            <Setter Property="BorderBrush" Value="#EEEEEE"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <!--
+                Always reserve 1px of border space. The brush stays transparent
+                in the default state and only the COLOR swaps on hover/select,
+                so the item height never changes and the text never shifts.
+            -->
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -29,13 +34,13 @@
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#F5F5F5"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#E0E0E0"/>
+                            </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#E8F5E9"/>
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="#4CAF50"/>
-                                <Setter TargetName="Bd" Property="BorderThickness" Value="1"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#F5F5F5"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
