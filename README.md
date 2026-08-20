@@ -34,3 +34,14 @@ dotnet run --project Clipboard
 ```powershell
 dotnet publish Clipboard -c Release -r win-x64 --self-contained false -o .\publish
 ```
+
+## GitHub Actions 自动发布
+
+推送形如 `v1.0.0` 的标签，或在 Actions 页面手动运行 **发布 Windows 版本** 工作流，
+即可自动构建并发布到 GitHub Releases：
+
+- 绿色版：`win-x64` / `win-arm64` 单文件 exe，解压即用，数据保存在 exe 旁边的 `data/` 目录
+- 安装版：Inno Setup 打包的安装程序（win-x64，按当前用户目录安装，无需管理员权限）
+
+工作流文件：[`.github/workflows/publish.yml`](.github/workflows/publish.yml)，
+安装脚本：[`installer/setup.iss`](installer/setup.iss)。

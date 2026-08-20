@@ -1,0 +1,98 @@
+name: 发布 Windows 版本
+
+on:
+  workflow_dispatch:        # 手动触发：Actions 页面点击 Run workflow
+  push:
+    tags:                   # 推送 v* 标签时自动触发，例如 v1.0.0
+      - "v*"
+
+permissions:
+  contents: write           # 允许创建 GitHub Release 并上传附件
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # 标签 v1.2.3 -> 版本号 1.2.3；手动触发时读取 csproj 中的 <Version>
+      - name: 计算版本号
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -match '^v(.+)$') {
+            $version = $Matches[1]
+          } else {
+            $csproj = Get-Content -Raw 'Clipboard/Clipboard.csproj'
+            $version = [regex]::Match($csproj, '<Version>([^<]+)</Version>').Groups[1].Value
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "版本号: $version"
+
+      - name: 发布绿色版（win-x64，单文件）
+        shell: pwsh
+        run: |
+          dotnet publish Clipboard/Clipboard.csproj -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
+            -p:Version=${{ steps.version.outputs.version }} `
+            -p:FileVersion=${{ steps.version.outputs.version }} `
+            -p:InformationalVersion=${{ steps.version.outputs.version }} `
+            -o publish/win-x64
+
+      - name: 发布绿色版（win-arm64，单文件）
+        shell: pwsh
+        run: |
+          dotnet publish Clipboard/Clipboard.csproj -c Release -r win-arm64 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
+            -p:Version=${{ steps.version.outputs.version }} `
+            -p:FileVersion=${{ steps.version.outputs.version }} `
+            -p:InformationalVersion=${{ steps.version.outputs.version }} `
+            -o publish/win-arm64
+
+      - name: 打包绿色版 ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          foreach ($arch in @('x64', 'arm64')) {
+            $zip = "dist/熔岩超级剪贴板-${{ steps.version.outputs.version }}-win-$arch-绿色版.zip"
+            Compress-Archive -Path "publish/$arch/*" -DestinationPath $zip
+          }
+          Get-ChildItem dist | Select-Object Name, Length
+
+      - name: 安装 Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: 编译安装程序（win-x64）
+        run: iscc installer/setup.iss /DMyAppVersion=${{ steps.version.outputs.version }}
+
+      - name: 创建/更新 GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.version.outputs.version }}
+          name: 熔岩超级剪贴板 v${{ steps.version.outputs.version }}
+          body: |
+            ## 下载
+            - 🟢 绿色版（x64，解压即用）：`熔岩超级剪贴板-${{ steps.version.outputs.version }}-win-x64-绿色版.zip`
+            - 🟢 绿色版（ARM64）：`熔岩超级剪贴板-${{ steps.version.outputs.version }}-win-arm64-绿色版.zip`
+            - 📦 安装版（x64）：`熔岩超级剪贴板-${{ steps.version.outputs.version }}-安装版.exe`
+
+            ## 说明
+            - 绿色版：解压后直接运行 `熔岩超级剪贴板.exe`，数据保存在 exe 旁边的 `data/` 目录。
+            - 安装版：安装到当前用户目录，无需管理员权限；数据保存在程序目录的 `data/` 下。
+            - 升级时保留旧版本目录下的 `data/` 即可保留历史记录。
+          artifacts: |
+            dist/*.zip
+            dist/*.exe
+          skipIfReleaseExists: true

@@ -29,6 +29,9 @@ public partial class MainWindow : Window
     private string? _lastClipboardSignature;
     private DateTime _lastImageCapture = DateTime.MinValue;
     private ClipboardEntry? _currentImageEntry;
+    private ClipboardEntry? _currentTextEntry;
+    private string? _currentDetectedLanguage;
+    private bool _showHighlighted = true;
 
     public MainWindow()
     {
@@ -200,9 +203,9 @@ public partial class MainWindow : Window
             Type = "text",
             Text = text,
         };
-        _history.Insert(entry);
-        HistoryList.SelectedItem = entry;
-        HistoryList.ScrollIntoView(entry);
+        var top = _history.Insert(entry);
+        HistoryList.SelectedItem = top;
+        HistoryList.ScrollIntoView(top);
         ApplyFilter();
     }
 
@@ -232,9 +235,9 @@ public partial class MainWindow : Window
             Type = "image",
             ImagePath = AppPaths.ImagePathForStorage(path),
         };
-        _history.Insert(entry);
-        HistoryList.SelectedItem = entry;
-        HistoryList.ScrollIntoView(entry);
+        var top = _history.Insert(entry);
+        HistoryList.SelectedItem = top;
+        HistoryList.ScrollIntoView(top);
         ApplyFilter();
     }
 
@@ -310,8 +313,13 @@ public partial class MainWindow : Window
         if (HistoryList.SelectedItem is not ClipboardEntry entry)
         {
             PreviewText.Visibility = Visibility.Collapsed;
+            PreviewCode.Visibility = Visibility.Collapsed;
             ImageScroll.Visibility = Visibility.Collapsed;
             _currentImageEntry = null;
+            _currentTextEntry = null;
+            _currentDetectedLanguage = null;
+            PreviewLangLabel.Text = string.Empty;
+            ToggleHighlightButton.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -333,16 +341,62 @@ public partial class MainWindow : Window
             }
 
             PreviewText.Visibility = Visibility.Collapsed;
+            PreviewCode.Visibility = Visibility.Collapsed;
             ImageScroll.Visibility = Visibility.Visible;
             _currentImageEntry = entry;
+            _currentTextEntry = null;
+            _currentDetectedLanguage = null;
+            PreviewLangLabel.Text = string.Empty;
+            ToggleHighlightButton.Visibility = Visibility.Collapsed;
         }
         else
         {
-            PreviewText.Text = entry.Text ?? string.Empty;
-            PreviewText.Visibility = Visibility.Visible;
-            ImageScroll.Visibility = Visibility.Collapsed;
+            var text = entry.Text ?? string.Empty;
+            _currentTextEntry = entry;
             _currentImageEntry = null;
+            _currentDetectedLanguage = CodeLanguageDetector.Detect(text);
+            ShowTextPreview(text, _currentDetectedLanguage);
         }
+    }
+
+    private void ShowTextPreview(string text, string? language)
+    {
+        ImageScroll.Visibility = Visibility.Collapsed;
+        _currentImageEntry = null;
+
+        if (!string.IsNullOrEmpty(language) && _showHighlighted)
+        {
+            PreviewCode.Document = CodeHighlighter.Highlight(text, language);
+            PreviewCode.Visibility = Visibility.Visible;
+            PreviewText.Visibility = Visibility.Collapsed;
+            PreviewLangLabel.Text = $"已识别: {language}";
+            ToggleHighlightButton.Visibility = Visibility.Visible;
+            ToggleHighlightButton.Content = "原始文本";
+        }
+        else
+        {
+            PreviewText.Text = text;
+            PreviewText.Visibility = Visibility.Visible;
+            PreviewCode.Visibility = Visibility.Collapsed;
+            if (!string.IsNullOrEmpty(language))
+            {
+                PreviewLangLabel.Text = $"已识别: {language}";
+                ToggleHighlightButton.Visibility = Visibility.Visible;
+                ToggleHighlightButton.Content = "代码高亮";
+            }
+            else
+            {
+                PreviewLangLabel.Text = string.Empty;
+                ToggleHighlightButton.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void ToggleHighlightButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_currentTextEntry is null) return;
+        _showHighlighted = !_showHighlighted;
+        ShowTextPreview(_currentTextEntry.Text ?? string.Empty, _currentDetectedLanguage);
     }
 
     private void HistoryList_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -466,8 +520,13 @@ public partial class MainWindow : Window
         if (_history.Entries.Count == 0)
         {
             PreviewText.Clear();
+            PreviewCode.Document = null;
             PreviewImage.Source = null;
             _currentImageEntry = null;
+            _currentTextEntry = null;
+            _currentDetectedLanguage = null;
+            PreviewLangLabel.Text = string.Empty;
+            ToggleHighlightButton.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -523,8 +582,13 @@ public partial class MainWindow : Window
         if (_history.Entries.Count == 0)
         {
             PreviewText.Clear();
+            PreviewCode.Document = null;
             PreviewImage.Source = null;
             _currentImageEntry = null;
+            _currentTextEntry = null;
+            _currentDetectedLanguage = null;
+            PreviewLangLabel.Text = string.Empty;
+            ToggleHighlightButton.Visibility = Visibility.Collapsed;
         }
 
         MessageBox.Show(this, string.Format(UiText.Cleared, label, removed), UiText.Tip,

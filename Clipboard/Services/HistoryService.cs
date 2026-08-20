@@ -62,10 +62,46 @@ public sealed class HistoryService
         }
     }
 
-    public void Insert(ClipboardEntry entry)
+    /// <summary>
+    /// Inserts <paramref name="entry"/> at the top of the history.
+    /// If an entry with the same content already exists, it is moved to the top
+    /// and its timestamp updated instead of creating a duplicate.
+    /// Returns the entry that ended up on top of the list.
+    /// </summary>
+    public ClipboardEntry Insert(ClipboardEntry entry)
     {
+        var existing = FindDuplicate(entry);
+        if (existing is not null)
+        {
+            existing.Timestamp = entry.Timestamp;
+            var index = Entries.IndexOf(existing);
+            Entries.Move(index, 0);
+            Save();
+            return existing;
+        }
+
         Entries.Insert(0, entry);
         Save();
+        return entry;
+    }
+
+    private ClipboardEntry? FindDuplicate(ClipboardEntry entry)
+    {
+        if (entry.IsImage)
+        {
+            var newPath = entry.ImagePath;
+            if (string.IsNullOrWhiteSpace(newPath))
+                return null;
+            return Entries.FirstOrDefault(e =>
+                e.IsImage &&
+                !string.IsNullOrWhiteSpace(e.ImagePath) &&
+                string.Equals(e.ImagePath, newPath, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var newText = entry.Text ?? string.Empty;
+        return Entries.FirstOrDefault(e =>
+            !e.IsImage &&
+            string.Equals(e.Text ?? string.Empty, newText, StringComparison.Ordinal));
     }
 
     public void Delete(ClipboardEntry entry)

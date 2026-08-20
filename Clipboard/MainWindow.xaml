@@ -134,7 +134,22 @@
 
             <!-- Right panel -->
             <DockPanel Grid.Column="1">
-                <TextBlock DockPanel.Dock="Top" Text="内容预览:" FontWeight="Bold" Margin="0,0,0,4"/>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <TextBlock Text="内容预览:" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="PreviewLangLabel"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="#888888"
+                               FontStyle="Italic"
+                               Text=""/>
+                    <Button x:Name="ToggleHighlightButton"
+                            Content="原始文本"
+                            MinWidth="70"
+                            Margin="8,0,0,0"
+                            HorizontalAlignment="Right"
+                            Click="ToggleHighlightButton_OnClick"
+                            Visibility="Collapsed"/>
+                </DockPanel>
                 <Grid>
                     <TextBox x:Name="PreviewText"
                              IsReadOnly="True"
@@ -144,7 +159,15 @@
                              BorderBrush="#CCCCCC"
                              BorderThickness="1"
                              Padding="8"
-                             Visibility="Collapsed"/>
+                             Visibility="Collapsed"
+                             FontFamily="Consolas, Courier New"
+                             FontSize="13"/>
+                    <FlowDocumentScrollViewer x:Name="PreviewCode"
+                                              Visibility="Collapsed"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              BorderBrush="#CCCCCC"
+                                              BorderThickness="1"/>
                     <ScrollViewer x:Name="ImageScroll"
                                   Visibility="Collapsed"
                                   HorizontalScrollBarVisibility="Auto"
