@@ -9,14 +9,15 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <RootNamespace>ClipboardApp</RootNamespace>
-    <AssemblyName>熔岩超级剪贴板</AssemblyName>
+    <AssemblyName>Clipboard</AssemblyName>
     <Version>1.0.0</Version>
-    <FileVersion>1.0.0.6</FileVersion>
-    <InformationalVersion>1.0.0.6</InformationalVersion>
+    <FileVersion>1.0.0.14</FileVersion>
+    <InformationalVersion>1.0.0.14</InformationalVersion>
     <Company>pengcunfu</Company>
     <Product>熔岩超级剪贴板</Product>
     <Copyright>Copyright © 2026 pengcunfu</Copyright>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
 
   <ItemGroup>
