@@ -4,8 +4,9 @@
   Build and publish Clipboard.Net to the publish folder.
 .DESCRIPTION
   By default increments BuildNumber and syncs VersionInfo.cs / Clipboard.csproj.
-  Produces a framework-dependent build (does not bundle .NET runtime).
-  Pass -SelfContained for a standalone single-file exe that includes the runtime.
+  Produces a single-file exe WITHOUT the .NET runtime (the target machine must
+  have the .NET Desktop Runtime installed).
+  Pass -SelfContained to bundle the .NET runtime into the exe.
 .EXAMPLE
   .\scripts\publish.ps1
   .\scripts\publish.ps1 -NoBump
@@ -19,7 +20,8 @@ param(
 
     [string]$Runtime = "win-x64",
 
-    # Bundle .NET runtime into a single-file exe. Default is framework-dependent (no runtime).
+    # Bundle the .NET runtime into a single-file exe. Default is a single-file
+    # exe that does NOT include the .NET runtime.
     [switch]$SelfContained,
 
     [switch]$NoBump,
@@ -104,10 +106,9 @@ else {
 }
 
 $scFlag = if ($SelfContained) { "true" } else { "false" }
-$singleFile = if ($SelfContained) { "true" } else { "false" }
 
 Write-Host "==> Publishing $Configuration -> $OutputDir" -ForegroundColor Cyan
-Write-Host "    Runtime=$Runtime  SelfContained=$scFlag  SingleFile=$singleFile" -ForegroundColor DarkGray
+Write-Host "    Runtime=$Runtime  SelfContained=$scFlag  SingleFile=true" -ForegroundColor DarkGray
 
 # Clear previous publish output so leftover self-contained files are not mixed in.
 if (Test-Path -LiteralPath $OutputDir) {
@@ -120,14 +121,12 @@ $publishArgs = @(
     "-r", $Runtime,
     "--self-contained", $scFlag,
     "-o", $OutputDir,
-    "/p:PublishSingleFile=$singleFile"
+    "/p:PublishSingleFile=true",
+    "/p:IncludeNativeLibrariesForSelfExtract=true"
 )
 
 if ($SelfContained) {
-    $publishArgs += @(
-        "/p:IncludeNativeLibrariesForSelfExtract=true",
-        "/p:EnableCompressionInSingleFile=true"
-    )
+    $publishArgs += @("/p:EnableCompressionInSingleFile=true")
 }
 
 dotnet @publishArgs

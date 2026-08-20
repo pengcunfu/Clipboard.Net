@@ -39,10 +39,10 @@ jobs:
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "版本号: $version"
 
-      - name: 发布绿色版（win-x64，单文件）
+      - name: 发布绿色版（win-x64，单文件，不含 .NET 运行时）
         shell: pwsh
         run: |
-          dotnet publish Clipboard/Clipboard.csproj -c Release -r win-x64 --self-contained true `
+          dotnet publish Clipboard/Clipboard.csproj -c Release -r win-x64 --self-contained false `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
             -p:Version=${{ steps.version.outputs.version }} `
@@ -50,10 +50,10 @@ jobs:
             -p:InformationalVersion=${{ steps.version.outputs.version }} `
             -o publish/win-x64
 
-      - name: 发布绿色版（win-arm64，单文件）
+      - name: 发布绿色版（win-arm64，单文件，不含 .NET 运行时）
         shell: pwsh
         run: |
-          dotnet publish Clipboard/Clipboard.csproj -c Release -r win-arm64 --self-contained true `
+          dotnet publish Clipboard/Clipboard.csproj -c Release -r win-arm64 --self-contained false `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
             -p:Version=${{ steps.version.outputs.version }} `
@@ -89,8 +89,9 @@ jobs:
             - 📦 安装版（x64）：`熔岩超级剪贴板-${{ steps.version.outputs.version }}-安装版.exe`
 
             ## 说明
-            - 绿色版：解压后直接运行 `熔岩超级剪贴板.exe`，数据保存在 exe 旁边的 `data/` 目录。
-            - 安装版：安装到当前用户目录，无需管理员权限；数据保存在程序目录的 `data/` 下。
+            - 绿色版：解压后直接运行 `Clipboard.exe`，数据保存在 exe 旁边的 `data/` 目录。
+            - 绿色版不内置 .NET 运行时，需先安装 [.NET Desktop Runtime 10](https://dotnet.microsoft.com/download/dotnet/10.0)。
+            - 安装版：安装到当前用户目录，无需管理员权限；数据保存在程序目录的 `data/` 下，同样需要 .NET Desktop Runtime 10。
             - 升级时保留旧版本目录下的 `data/` 即可保留历史记录。
           artifacts: |
             dist/*.zip

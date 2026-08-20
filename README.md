@@ -32,7 +32,14 @@ dotnet run --project Clipboard
 ## 发布
 
 ```powershell
-dotnet publish Clipboard -c Release -r win-x64 --self-contained false -o .\publish
+.\scripts\publish.ps1
+```
+
+默认生成单文件 exe（不包含 .NET 运行时，体积小；目标机器需已安装 .NET Desktop Runtime）。
+如需把 .NET 运行时也打进 exe（体积更大，但目标机器无需安装），加 `-SelfContained` 参数：
+
+```powershell
+.\scripts\publish.ps1 -SelfContained
 ```
 
 ## GitHub Actions 自动发布

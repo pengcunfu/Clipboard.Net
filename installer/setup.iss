@@ -2,8 +2,8 @@
 ;
 ; 需要 Inno Setup 6.3+（choco install innosetup）
 ; 用法：
-;   1. 先发布单文件绿色版：
-;      dotnet publish Clipboard/Clipboard.csproj -c Release -r win-x64 --self-contained true `
+;   1. 先发布单文件绿色版（不含 .NET 运行时）：
+;      dotnet publish Clipboard/Clipboard.csproj -c Release -r win-x64 --self-contained false `
 ;        -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
 ;        -p:EnableCompressionInSingleFile=true -o publish/win-x64
 ;   2. 编译安装程序：
@@ -14,7 +14,7 @@
 #endif
 #define MyAppName "熔岩超级剪贴板"
 #define MyAppPublisher "pengcunfu"
-#define MyAppExeName "熔岩超级剪贴板.exe"
+#define MyAppExeName "Clipboard.exe"
 #define MyAppIcon "..\Clipboard\Assets\icon.ico"
 
 [Setup]

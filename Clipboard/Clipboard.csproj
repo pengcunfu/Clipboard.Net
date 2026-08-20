@@ -11,8 +11,8 @@
     <RootNamespace>ClipboardApp</RootNamespace>
     <AssemblyName>Clipboard</AssemblyName>
     <Version>1.0.0</Version>
-    <FileVersion>1.0.0.14</FileVersion>
-    <InformationalVersion>1.0.0.14</InformationalVersion>
+    <FileVersion>1.0.0.16</FileVersion>
+    <InformationalVersion>1.0.0.16</InformationalVersion>
     <Company>pengcunfu</Company>
     <Product>熔岩超级剪贴板</Product>
     <Copyright>Copyright © 2026 pengcunfu</Copyright>
