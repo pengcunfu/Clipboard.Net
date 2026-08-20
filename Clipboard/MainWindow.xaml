@@ -71,7 +71,7 @@
                         <TextBox x:Name="SearchBox"
                                  VerticalContentAlignment="Center"
                                  Padding="5,0"
-                                 TextChanged="Filter_OnChanged"/>
+                                 TextChanged="RangeOrFilter_OnChanged"/>
                         <TextBlock x:Name="SearchPlaceholder"
                                    Text="搜索历史记录..."
                                    Foreground="Gray"
@@ -81,15 +81,30 @@
                     </Grid>
                     <ComboBox x:Name="CategoryCombo"
                               DockPanel.Dock="Left"
-                              Width="110"
+                              Width="90"
                               Height="28"
                               Margin="8,0,0,0"
                               VerticalContentAlignment="Center"
                               SelectedIndex="0"
-                              SelectionChanged="Filter_OnChanged">
-                        <ComboBoxItem Content="全部"/>
-                        <ComboBoxItem Content="仅文本"/>
-                        <ComboBoxItem Content="仅图片"/>
+                              SelectionChanged="RangeOrFilter_OnChanged">
+                        <ComboBoxItem Content="全部" Tag="all"/>
+                        <ComboBoxItem Content="仅文本" Tag="text"/>
+                        <ComboBoxItem Content="仅图片" Tag="image"/>
+                    </ComboBox>
+                    <ComboBox x:Name="RangeCombo"
+                              DockPanel.Dock="Left"
+                              Width="100"
+                              Height="28"
+                              Margin="6,0,0,0"
+                              VerticalContentAlignment="Center"
+                              ToolTip="日期范围"
+                              SelectedIndex="0"
+                              SelectionChanged="RangeOrFilter_OnChanged">
+                        <ComboBoxItem Content="最近3天" Tag="3days"/>
+                        <ComboBoxItem Content="今天" Tag="today"/>
+                        <ComboBoxItem Content="最近一周" Tag="week"/>
+                        <ComboBoxItem Content="最近一个月" Tag="month"/>
+                        <ComboBoxItem Content="全部" Tag="all"/>
                     </ComboBox>
                     <ToggleButton x:Name="MonitorButton"
                                   DockPanel.Dock="Left"

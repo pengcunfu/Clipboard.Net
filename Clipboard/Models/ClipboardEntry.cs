@@ -6,6 +6,9 @@ namespace ClipboardApp.Models;
 
 public sealed class ClipboardEntry
 {
+    [JsonIgnore]
+    public long Id { get; set; }
+
     [JsonPropertyName("timestamp")]
     public string Timestamp { get; set; } = string.Empty;
 

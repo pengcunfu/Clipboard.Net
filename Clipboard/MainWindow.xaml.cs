@@ -18,7 +18,6 @@ public partial class MainWindow : Window
     private readonly ConfigService _config = new();
     private readonly HistoryService _history = new();
     private readonly HotkeyService _hotkey;
-    private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _clipboardTimer;
 
     private Forms.NotifyIcon? _trayIcon;
@@ -41,12 +40,8 @@ public partial class MainWindow : Window
         TrySetWindowIcon();
 
         HistoryList.ItemsSource = _history.Entries;
-        _history.Load();
+        ReloadVisibleView();
         UpdateSearchPlaceholder();
-
-        _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
-        _saveTimer.Tick += (_, _) => _history.Save();
-        _saveTimer.Start();
 
         _clipboardTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _clipboardTimer.Tick += (_, _) => PollClipboard();
@@ -75,7 +70,6 @@ public partial class MainWindow : Window
     private void MainWindow_OnClosed(object? sender, EventArgs e)
     {
         _hotkey.Dispose();
-        _saveTimer.Stop();
         _clipboardTimer.Stop();
         if (_trayIcon is not null)
         {
@@ -203,9 +197,9 @@ public partial class MainWindow : Window
             Text = text,
         };
         var top = _history.Insert(entry);
-        HistoryList.SelectedItem = top;
-        HistoryList.ScrollIntoView(top);
-        ApplyFilter();
+        ReloadVisibleView();
+        HistoryList.SelectedItem = _history.Entries.FirstOrDefault(e => e.Id == top.Id) ?? top;
+        HistoryList.ScrollIntoView(HistoryList.SelectedItem);
     }
 
     private void CaptureImage(BitmapSource image)
@@ -235,9 +229,9 @@ public partial class MainWindow : Window
             ImagePath = AppPaths.ImagePathForStorage(path),
         };
         var top = _history.Insert(entry);
-        HistoryList.SelectedItem = top;
-        HistoryList.ScrollIntoView(top);
-        ApplyFilter();
+        ReloadVisibleView();
+        HistoryList.SelectedItem = _history.Entries.FirstOrDefault(e => e.Id == top.Id) ?? top;
+        HistoryList.ScrollIntoView(HistoryList.SelectedItem);
     }
 
     private void ShowMainWindow()
@@ -268,7 +262,6 @@ public partial class MainWindow : Window
     private void QuitApp()
     {
         _reallyExit = true;
-        _history.Save();
         Application.Current.Shutdown();
     }
 
@@ -560,14 +553,14 @@ public partial class MainWindow : Window
         _history.Delete(entry);
         if (_history.Entries.Count == 0)
         {
-            PreviewText.Clear();
-            PreviewCode.Document = null;
-            PreviewImage.Source = null;
-            _currentImageEntry = null;
-            _currentTextEntry = null;
-            _currentDetectedLanguage = null;
-            PreviewLangLabel.Text = string.Empty;
-            ToggleHighlightButton.Visibility = Visibility.Collapsed;
+            ClearPreview();
+        }
+        else
+        {
+            // The removed entry is gone from the in-memory list, but a quick
+            // reload also pulls in any new entries that may have been captured
+            // in the background and keeps the list in sync.
+            ReloadVisibleView();
         }
     }
 
@@ -601,7 +594,9 @@ public partial class MainWindow : Window
             ["all"] = UiText.RangeAll,
         };
         var label = labels.GetValueOrDefault(mode, UiText.RangeSelected);
-        var count = _history.Entries.Count(entry => mode == "all" || MatchesRange(entry, mode));
+
+        // Count the rows that would actually be removed — not just the visible window.
+        var count = _history.CountByRange(mode);
         if (count == 0)
         {
             MessageBox.Show(this, string.Format(UiText.NothingToClear, label), UiText.Tip,
@@ -620,40 +615,19 @@ public partial class MainWindow : Window
             return;
 
         var removed = _history.ClearByRange(mode);
+        // ClearByRange already refreshed the visible window. Just check whether
+        // the selection still has something to point at.
         if (_history.Entries.Count == 0)
         {
-            PreviewText.Clear();
-            PreviewCode.Document = null;
-            PreviewImage.Source = null;
-            _currentImageEntry = null;
-            _currentTextEntry = null;
-            _currentDetectedLanguage = null;
-            PreviewLangLabel.Text = string.Empty;
-            ToggleHighlightButton.Visibility = Visibility.Collapsed;
+            ClearPreview();
+        }
+        else if (HistoryList.SelectedItem is null)
+        {
+            HistoryList.SelectedItem = _history.Entries.FirstOrDefault();
         }
 
         MessageBox.Show(this, string.Format(UiText.Cleared, label, removed), UiText.Tip,
             MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-
-    private static bool MatchesRange(ClipboardEntry entry, string mode)
-    {
-        if (!DateTime.TryParseExact(
-                entry.Timestamp,
-                "yyyy-MM-dd HH:mm:ss",
-                null,
-                System.Globalization.DateTimeStyles.None,
-                out var dt))
-            return false;
-
-        var now = DateTime.Now;
-        return mode switch
-        {
-            "today" => dt.Date == now.Date,
-            "week" => dt >= now.AddDays(-7),
-            "month" => dt >= now.AddDays(-30),
-            _ => false,
-        };
     }
 
     private void Export_OnClick(object sender, RoutedEventArgs e)
@@ -689,13 +663,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Filter_OnChanged(object sender, TextChangedEventArgs e)
+    private void RangeOrFilter_OnChanged(object sender, RoutedEventArgs e)
     {
         UpdateSearchPlaceholder();
-        ApplyFilter();
+        ReloadVisibleView();
     }
-
-    private void Filter_OnChanged(object sender, SelectionChangedEventArgs e) => ApplyFilter();
 
     private void UpdateSearchPlaceholder()
     {
@@ -706,44 +678,63 @@ public partial class MainWindow : Window
             : Visibility.Collapsed;
     }
 
-    private void ApplyFilter()
+    /// <summary>
+    /// Re-run the SQL query that drives <see cref="HistoryList"/> based on the
+    /// current date range, category, and search box values. The result replaces
+    /// the contents of <see cref="HistoryService.Entries"/>.
+    /// </summary>
+    private void ReloadVisibleView()
     {
-        if (!IsLoaded || HistoryList?.ItemsSource is null || SearchBox is null || CategoryCombo is null)
-            return;
+        if (!IsLoaded) return;
 
-        var view = CollectionViewSource.GetDefaultView(HistoryList.ItemsSource);
-        if (view is null)
-            return;
+        var query = new HistoryQuery(
+            SinceTimestamp: GetRangeSince(),
+            Type: GetCategoryType(),
+            Search: string.IsNullOrWhiteSpace(SearchBox?.Text) ? null : SearchBox.Text.Trim());
+        _history.ReloadView(query);
 
-        var search = SearchBox.Text.Trim().ToLowerInvariant();
-        var category = (CategoryCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? UiText.CategoryAll;
-
-        view.Filter = obj =>
+        // Reset selection if the previously selected entry is no longer visible.
+        if (HistoryList.SelectedItem is not ClipboardEntry || !_history.Entries.Contains((ClipboardEntry)HistoryList.SelectedItem!))
         {
-            if (obj is not ClipboardEntry entry)
-                return false;
+            HistoryList.SelectedItem = _history.Entries.FirstOrDefault();
+        }
+    }
 
-            var typeMatch = true;
-            if (category == UiText.CategoryText)
-                typeMatch = !entry.IsImage;
-            else if (category == UiText.CategoryImage)
-                typeMatch = entry.IsImage;
-
-            if (!typeMatch)
-                return false;
-
-            if (string.IsNullOrEmpty(search))
-                return true;
-
-            if (entry.IsImage)
-            {
-                var name = Path.GetFileName(AppPaths.ResolveImagePath(entry.ImagePath)).ToLowerInvariant();
-                return entry.Timestamp.ToLowerInvariant().Contains(search) || name.Contains(search);
-            }
-
-            return entry.Timestamp.ToLowerInvariant().Contains(search)
-                   || (entry.Text ?? string.Empty).ToLowerInvariant().Contains(search);
+    private string? GetRangeSince()
+    {
+        var tag = (RangeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString();
+        return tag switch
+        {
+            "3days" => HistoryService.DaysAgoTimestamp(3),
+            "today" => HistoryService.TodayStartTimestamp(),
+            "week"  => HistoryService.DaysAgoTimestamp(7),
+            "month" => HistoryService.DaysAgoTimestamp(30),
+            "all" or null => null,
+            _ => null,
         };
+    }
+
+    private string? GetCategoryType()
+    {
+        var tag = (CategoryCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString();
+        return tag switch
+        {
+            "text"  => "text",
+            "image" => "image",
+            _ => null,
+        };
+    }
+
+    private void ClearPreview()
+    {
+        PreviewText.Clear();
+        PreviewCode.Document = null;
+        PreviewImage.Source = null;
+        _currentImageEntry = null;
+        _currentTextEntry = null;
+        _currentDetectedLanguage = null;
+        PreviewLangLabel.Text = string.Empty;
+        ToggleHighlightButton.Visibility = Visibility.Collapsed;
     }
 
     private void About_OnClick(object sender, RoutedEventArgs e)

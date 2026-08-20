@@ -42,6 +42,8 @@ public static class AppPaths
 
     public static string HistoryFile => Path.Combine(DataDir, "clipboard_history.json");
 
+    public static string HistoryDb => Path.Combine(DataDir, "clipboard.db");
+
     public static string ResourcePath(string name) => Path.Combine(AppRoot, name);
 
     public static string ResolveImagePath(string? stored)
