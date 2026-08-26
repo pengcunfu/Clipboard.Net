@@ -1,0 +1,48 @@
+﻿<Window x:Class="ClipboardApp.Dialogs.AboutDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="关于"
+        Height="420" Width="460"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F5F5F5">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock x:Name="AppNameLabel" FontSize="20" FontWeight="Bold" Foreground="#2E7D32" Margin="0,0,0,4"/>
+            <TextBlock x:Name="VersionLabel" Foreground="#666" FontSize="13"/>
+        </StackPanel>
+
+        <!-- Content with selectable text -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <RichTextBox x:Name="ContentBox"
+                         IsReadOnly="True"
+                         IsDocumentEnabled="True"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         FontSize="13"
+                         Foreground="#333"
+                         Padding="0">
+                <RichTextBox.Document>
+                    <FlowDocument>
+                        <Paragraph x:Name="CopyrightPara"/>
+                        <Paragraph x:Name="WebsitePara"/>
+                        <Paragraph />
+                        <Paragraph x:Name="AboutBodyPara"/>
+                    </FlowDocument>
+                </RichTextBox.Document>
+            </RichTextBox>
+        </ScrollViewer>
+
+        <!-- OK button -->
+        <Button Grid.Row="2" Content="确定" Width="90" Height="32"
+                HorizontalAlignment="Right" Margin="0,16,0,0"
+                IsDefault="True" Click="OkButton_OnClick"/>
+    </Grid>
+</Window>

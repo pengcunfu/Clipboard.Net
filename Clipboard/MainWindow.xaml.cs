@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -238,6 +238,8 @@ public partial class MainWindow : Window
     {
         Show();
         WindowState = WindowState.Normal;
+        // Force layout pass so ActualWidth/ActualHeight are valid before centering
+        UpdateLayout();
         CenterOnScreen();
         Activate();
         Topmost = true;
@@ -254,9 +256,21 @@ public partial class MainWindow : Window
         if (screen is null)
             return;
 
+        // Screen.WorkingArea is in physical pixels; WPF Left/Top are in DIPs.
+        // Convert by dividing by the DPI scale factor.
+        var source = PresentationSource.FromVisual(this);
+        var dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+        var dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
         var area = screen.WorkingArea;
-        Left = area.Left + (area.Width - Width) / 2;
-        Top = area.Top + (area.Height - Height) / 2;
+        var left = area.Left / dpiX;
+        var top = area.Top / dpiY;
+        var workW = area.Width / dpiX;
+        var workH = area.Height / dpiY;
+
+        var w = ActualWidth > 0 ? ActualWidth : Width;
+        var h = ActualHeight > 0 ? ActualHeight : Height;
+        Left = left + (workW - w) / 2;
+        Top = top + (workH - h) / 2;
     }
 
     private void QuitApp()
@@ -364,9 +378,9 @@ public partial class MainWindow : Window
             PreviewCode.Document = CodeHighlighter.Highlight(text, language);
             PreviewCode.Visibility = Visibility.Visible;
             PreviewText.Visibility = Visibility.Collapsed;
-            PreviewLangLabel.Text = $"已识别: {language}";
+            PreviewLangLabel.Text = $"宸茶瘑鍒? {language}";
             ToggleHighlightButton.Visibility = Visibility.Visible;
-            ToggleHighlightButton.Content = "原始文本";
+            ToggleHighlightButton.Content = "鍘熷鏂囨湰";
         }
         else
         {
@@ -375,9 +389,9 @@ public partial class MainWindow : Window
             PreviewCode.Visibility = Visibility.Collapsed;
             if (!string.IsNullOrEmpty(language))
             {
-                PreviewLangLabel.Text = $"已识别: {language}";
+                PreviewLangLabel.Text = $"宸茶瘑鍒? {language}";
                 ToggleHighlightButton.Visibility = Visibility.Visible;
-                ToggleHighlightButton.Content = "代码高亮";
+                ToggleHighlightButton.Content = "浠ｇ爜楂樹寒";
             }
             else
             {
@@ -595,7 +609,7 @@ public partial class MainWindow : Window
         };
         var label = labels.GetValueOrDefault(mode, UiText.RangeSelected);
 
-        // Count the rows that would actually be removed — not just the visible window.
+        // Count the rows that would actually be removed 鈥?not just the visible window.
         var count = _history.CountByRange(mode);
         if (count == 0)
         {
@@ -739,20 +753,11 @@ public partial class MainWindow : Window
 
     private void About_OnClick(object sender, RoutedEventArgs e)
     {
-        var build = string.IsNullOrEmpty(VersionInfo.BuildVersion)
-            ? string.Empty
-            : "\n" + UiText.BuildVersion + ": " + VersionInfo.BuildVersion;
-        var builtAt = string.IsNullOrEmpty(VersionInfo.BuiltAt)
-            ? string.Empty
-            : "\n" + UiText.BuiltAt + ": " + VersionInfo.BuiltAt;
-
-        MessageBox.Show(
-            this,
-            UiText.AppName + "\n" + UiText.Version + ": " + VersionInfo.Version + build + builtAt +
-            "\n\n" + UiText.Copyright + "\n\n" + UiText.AboutBody,
-            UiText.About,
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var dialog = new AboutDialog
+        {
+            Owner = this,
+        };
+        dialog.ShowDialog();
     }
 
     private void HotkeySettings_OnClick(object sender, RoutedEventArgs e)
