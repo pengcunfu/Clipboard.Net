@@ -1,6 +1,6 @@
-# 熔岩超级剪贴板 (.NET 10)
+# Clipboard (.NET 10)
 
-由 Python/PySide6 版本迁移而来的 WPF 实现，目标框架 `net10.0-windows`。
+剪贴板历史管理工具（由 Python/PySide6 版本迁移而来的 WPF 实现），目标框架 `net10.0-windows`。
 
 ## 功能
 
@@ -42,13 +42,21 @@ dotnet run --project Clipboard
 .\scripts\publish.ps1 -SelfContained
 ```
 
+版本号单一维护在 `Clipboard/Clipboard.csproj` 的 `<Version>`（语义化版本），由 git tag 驱动。
+
 ## GitHub Actions 自动发布
 
-推送形如 `v1.0.0` 的标签，或在 Actions 页面手动运行 **发布 Windows 版本** 工作流，
-即可自动构建并发布到 GitHub Releases：
+推送形如 `v1.0.0` 的标签，或在 Actions 页面手动运行 **build-release** 工作流，
+即可自动构建并发布到 GitHub Releases（Velopack 打包）：
 
-- 绿色版：`win-x64` / `win-arm64` 单文件 exe，解压即用，数据保存在 exe 旁边的 `data/` 目录
-- 安装版：Inno Setup 打包的安装程序（win-x64，按当前用户目录安装，无需管理员权限）
+- 安装版：`Clipboard-win-Setup.exe`，安装后支持**应用内自动更新**（增量下载、自动重启）
+- 便携版：`Clipboard-win-Portable.zip`，解压即用（便携版同样支持检查更新）
+- 更新包：`Clipboard-{版本}-full.nupkg` / `-delta.nupkg` + `RELEASES` 更新清单
 
-工作流文件：[`.github/workflows/publish.yml`](.github/workflows/publish.yml)，
-安装脚本：[`installer/setup.iss`](installer/setup.iss)。
+应用内通过托盘菜单或「关于」对话框的 **检查更新** 检查并安装新版本，更新源即 GitHub Releases。
+增量更新需要上一版本，首次发布无 delta 增量包属正常。
+
+工作流文件：[`.github/workflows/build-release.yml`](.github/workflows/build-release.yml)。
+
+> 注意：从旧版 Inno Setup 安装版升级的用户，需重新运行一次新的 `Clipboard-win-Setup.exe`
+> 才能开启自动更新。

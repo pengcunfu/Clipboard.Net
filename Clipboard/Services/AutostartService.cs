@@ -6,7 +6,7 @@ namespace ClipboardApp.Services;
 public static class AutostartService
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "熔岩超级剪贴板";
+    private const string ValueName = "Clipboard";
 
     public static bool IsEnabled()
     {

@@ -1,15 +1,15 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   Build and publish Clipboard.Net to the publish folder.
 .DESCRIPTION
-  By default increments BuildNumber and syncs VersionInfo.cs / Clipboard.csproj.
+  Version comes from Clipboard.csproj <Version> (semantic versioning, driven by
+  git tags). The script does NOT bump the version anymore.
   Produces a single-file exe WITHOUT the .NET runtime (the target machine must
   have the .NET Desktop Runtime installed).
   Pass -SelfContained to bundle the .NET runtime into the exe.
 .EXAMPLE
   .\scripts\publish.ps1
-  .\scripts\publish.ps1 -NoBump
   .\scripts\publish.ps1 -SelfContained
   .\scripts\publish.ps1 -Runtime win-arm64 -OutputDir D:\dist\clipboard
 #>
@@ -24,8 +24,6 @@ param(
     # exe that does NOT include the .NET runtime.
     [switch]$SelfContained,
 
-    [switch]$NoBump,
-
     [string]$OutputDir
 )
 
@@ -33,81 +31,21 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Project = Join-Path $RepoRoot "Clipboard\Clipboard.csproj"
-$VersionInfoPath = Join-Path $RepoRoot "Clipboard\VersionInfo.cs"
-
-if (-not $OutputDir) {
-    $OutputDir = Join-Path $RepoRoot "publish"
-}
 
 if (-not (Test-Path $Project)) {
     throw "Project file not found: $Project"
 }
-if (-not (Test-Path $VersionInfoPath)) {
-    throw "Version file not found: $VersionInfoPath"
+
+# 版本单一来源：Clipboard.csproj 的 <Version>（语义化版本，由 git tag 驱动）
+$proj = Get-Content -LiteralPath $Project -Raw -Encoding UTF8
+if ($proj -notmatch '<Version>([^<]+)</Version>') {
+    throw "Failed to parse <Version> from Clipboard.csproj"
 }
-
-function Get-VersionState {
-    $cs = Get-Content -LiteralPath $VersionInfoPath -Raw -Encoding UTF8
-
-    if ($cs -notmatch 'public const string Version = "([^"]+)";') {
-        throw "Failed to parse Version from VersionInfo.cs"
-    }
-    $version = $Matches[1]
-
-    if ($cs -notmatch 'public const int BuildNumber = (\d+);') {
-        throw "Failed to parse BuildNumber from VersionInfo.cs"
-    }
-    $build = [int]$Matches[1]
-
-    [pscustomobject]@{
-        Version     = $version
-        BuildNumber = $build
-        FullVersion = if ($build -gt 0) { "$version.$build" } else { $version }
-    }
-}
-
-function Update-VersionFiles {
-    param(
-        [Parameter(Mandatory)][string]$Version,
-        [Parameter(Mandatory)][int]$BuildNumber,
-        [Parameter(Mandatory)][string]$BuiltAt
-    )
-
-    $full = if ($BuildNumber -gt 0) { "$Version.$BuildNumber" } else { $Version }
-
-    $cs = Get-Content -LiteralPath $VersionInfoPath -Raw -Encoding UTF8
-    $cs = [regex]::Replace($cs, 'public const string Version = "[^"]+";', "public const string Version = `"$Version`";")
-    $cs = [regex]::Replace($cs, 'public const int BuildNumber = \d+;', "public const int BuildNumber = $BuildNumber;")
-    $cs = [regex]::Replace($cs, 'public const string BuiltAt = "[^"]+";', "public const string BuiltAt = `"$BuiltAt`";")
-    Set-Content -LiteralPath $VersionInfoPath -Value $cs -Encoding UTF8 -NoNewline
-
-    $proj = Get-Content -LiteralPath $Project -Raw -Encoding UTF8
-    $proj = [regex]::Replace($proj, '<Version>[^<]+</Version>', "<Version>$Version</Version>")
-    $proj = [regex]::Replace($proj, '<FileVersion>[^<]+</FileVersion>', "<FileVersion>$full</FileVersion>")
-    $proj = [regex]::Replace($proj, '<InformationalVersion>[^<]+</InformationalVersion>', "<InformationalVersion>$full</InformationalVersion>")
-    Set-Content -LiteralPath $Project -Value $proj -Encoding UTF8 -NoNewline
-
-    return $full
-}
-
-$state = Get-VersionState
-$version = $state.Version
-$build = $state.BuildNumber
-
-if (-not $NoBump) {
-    $build++
-    $builtAt = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $fullVersion = Update-VersionFiles -Version $version -BuildNumber $build -BuiltAt $builtAt
-    Write-Host "==> Bumped version: $fullVersion  (BuiltAt $builtAt)" -ForegroundColor Cyan
-}
-else {
-    $fullVersion = $state.FullVersion
-    Write-Host "==> Keeping version: $fullVersion" -ForegroundColor Cyan
-}
+$version = $Matches[1]
 
 $scFlag = if ($SelfContained) { "true" } else { "false" }
 
-Write-Host "==> Publishing $Configuration -> $OutputDir" -ForegroundColor Cyan
+Write-Host "==> Publishing v$version ($Configuration) -> $OutputDir" -ForegroundColor Cyan
 Write-Host "    Runtime=$Runtime  SelfContained=$scFlag  SingleFile=true" -ForegroundColor DarkGray
 
 # Clear previous publish output so leftover self-contained files are not mixed in.
@@ -134,27 +72,19 @@ if ($LASTEXITCODE -ne 0) {
     throw "Publish failed (exit $LASTEXITCODE)"
 }
 
-$projXml = Get-Content -LiteralPath $Project -Raw -Encoding UTF8
-$exeName = if ($projXml -match '<AssemblyName>([^<]+)</AssemblyName>') {
-    "$($Matches[1]).exe"
-}
-else {
-    "Clipboard.exe"
-}
-
-$exePath = Join-Path $OutputDir $exeName
+$exePath = Join-Path $OutputDir "Clipboard.exe"
 if (Test-Path -LiteralPath $exePath) {
     $sizeMb = [math]::Round((Get-Item -LiteralPath $exePath).Length / 1MB, 2)
-    Write-Host "==> Done: $exePath ($sizeMb MB)  v$fullVersion" -ForegroundColor Green
+    Write-Host "==> Done: $exePath ($sizeMb MB)  v$version" -ForegroundColor Green
 }
 else {
     $fallback = Get-ChildItem -LiteralPath $OutputDir -Filter *.exe -File -ErrorAction SilentlyContinue |
         Select-Object -First 1
     if ($fallback) {
         $sizeMb = [math]::Round($fallback.Length / 1MB, 2)
-        Write-Host "==> Done: $($fallback.FullName) ($sizeMb MB)  v$fullVersion" -ForegroundColor Green
+        Write-Host "==> Done: $($fallback.FullName) ($sizeMb MB)  v$version" -ForegroundColor Green
     }
     else {
-        Write-Host "==> Done: $OutputDir  v$fullVersion" -ForegroundColor Green
+        Write-Host "==> Done: $OutputDir  v$version" -ForegroundColor Green
     }
 }

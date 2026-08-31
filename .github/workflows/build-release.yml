@@ -1,0 +1,166 @@
+# GitHub Actions 发布流水线（.NET + Velopack）
+# 触发：推送 v* tag 自动发布到 GitHub Release；workflow_dispatch 仅构建产物（不发 Release）。
+
+name: build-release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（不含 v 前缀，如 1.0.0），留空则用日期版本'
+        required: false
+        default: ''
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  SOLUTION: 'Clipboard.slnx'
+  CSPROJ: 'Clipboard/Clipboard.csproj'
+  APP_ID: 'Clipboard'
+  PRODUCT_NAME: 'Clipboard'
+  COMPANY_NAME: 'pengcunfu'
+  FRAMEWORK: 'net10-x64-desktop'
+  RUNTIME: 'win-x64'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # 完整历史：生成发布说明 + 计算 delta 都需要上一 tag
+      - name: 检出代码（完整历史）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 安装 .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 确定版本号
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $manual = "${{ inputs.version }}"
+          if ($tag -match '^v(.+)$') {
+            $v = $Matches[1]
+          } elseif ($manual) {
+            $v = $manual
+          } else {
+            $v = (Get-Date).ToString("0.0.0-yyMMddHHmm")
+          }
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+          echo "版本号: $v"
+
+      - name: 还原依赖
+        shell: pwsh
+        run: |
+          dotnet restore ${{ env.SOLUTION }}
+
+      # 框架依赖单文件（不打包 .NET，安装器负责装运行时 → 安装包小）
+      - name: 发布框架依赖单文件版本
+        shell: pwsh
+        run: |
+          dotnet publish ${{ env.CSPROJ }} `
+            -c Release `
+            -r ${{ env.RUNTIME }} `
+            --self-contained false `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:Version=${{ steps.ver.outputs.version }} `
+            -o artifacts/publish `
+            --nologo
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+
+      - name: 清理发布目录并校验产物
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts/publish -Filter "*.xml" -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force
+          if (-not (Test-Path "artifacts/publish/${{ env.APP_ID }}.exe")) { throw "${{ env.APP_ID }}.exe 未生成" }
+          $mb = [math]::Round(((Get-ChildItem artifacts/publish -Recurse -File | Measure-Object Length -Sum).Sum)/1MB,2)
+          echo "发布目录大小: $mb MB"
+
+      # 注意坑：git describe 在无上一 tag / 浅克隆时退出码非 0，
+      # 必须用管道捕获 stdout 而非依赖 $LASTEXITCODE，最后显式 exit 0
+      - name: 生成发布说明（自上一 tag 的提交记录）
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          "## ${{ env.PRODUCT_NAME }} $version" | Set-Content RELEASE_NOTES.md
+          $prev = ""
+          git describe --tags --abbrev=0 "${{ github.sha }}~1" 2>$null | ForEach-Object { $prev = $_ }
+          if ($prev) {
+            git log --oneline "$prev..${{ github.sha }}" | Add-Content RELEASE_NOTES.md
+          } else {
+            "" | Add-Content RELEASE_NOTES.md
+          }
+          exit 0
+
+      - name: 安装 vpk CLI（与 NuGet 包 Velopack 版本一致）
+        shell: pwsh
+        run: |
+          dotnet tool install -g vpk --version 1.2.0
+          dotnet tool list -g | Select-String vpk
+
+      # 下载上一版本用于生成 delta 增量包；首次发布无上一版本属正常，放行不 fail
+      - name: 下载上一 Velopack 版本（用于生成 delta 增量包）
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+          vpk download github `
+            --repoUrl "https://github.com/${{ github.repository }}" `
+            --token "${{ secrets.GITHUB_TOKEN }}" `
+            --outputDir artifacts/velopack
+          if ($LASTEXITCODE -ne 0) { Write-Host "未找到上一 Velopack 版本，跳过 delta（首次发布属正常）" }
+
+      - name: vpk 打包（安装包 + full/delta 更新包 + Portable.zip + 更新清单）
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+          vpk pack `
+            -u "${{ env.APP_ID }}" `
+            -v ${{ steps.ver.outputs.version }} `
+            -r ${{ env.RUNTIME }} `
+            -p artifacts/publish `
+            -o artifacts/velopack `
+            -e ${{ env.APP_ID }}.exe `
+            --packTitle "${{ env.PRODUCT_NAME }}" `
+            --packAuthors "${{ env.COMPANY_NAME }}" `
+            -i Clipboard/Assets/icon.ico `
+            --framework ${{ env.FRAMEWORK }} `
+            --releaseNotes RELEASE_NOTES.md
+          if ($LASTEXITCODE -ne 0) { throw "vpk pack 失败" }
+          if (-not (Test-Path "artifacts/velopack/${{ env.APP_ID }}-win-Setup.exe")) { throw "Velopack 安装包未生成" }
+          Get-ChildItem artifacts/velopack -File | Select-Object Name, @{N='SizeMB';E={[math]::Round($_.Length/1MB,2)}} | Format-Table -AutoSize
+
+      - name: 发布到 GitHub Release（tag 触发时）
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+          vpk upload github `
+            --repoUrl "https://github.com/${{ github.repository }}" `
+            --token "${{ secrets.GITHUB_TOKEN }}" `
+            --outputDir artifacts/velopack `
+            --publish `
+            --releaseName "${{ env.PRODUCT_NAME }} ${{ steps.ver.outputs.version }}" `
+            --tag ${{ github.ref_name }}
+          if ($LASTEXITCODE -ne 0) { throw "vpk upload 失败" }
+
+      # workflow_dispatch 手动触发时保留产物供下载
+      - name: 上传构建产物（供 workflow_dispatch 手动下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PRODUCT_NAME }}-${{ steps.ver.outputs.version }}
+          path: artifacts/velopack/**
+          retention-days: 30

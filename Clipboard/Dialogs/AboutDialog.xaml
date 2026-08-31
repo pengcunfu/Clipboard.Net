@@ -40,9 +40,10 @@
             </RichTextBox>
         </ScrollViewer>
 
-        <!-- OK button -->
-        <Button Grid.Row="2" Content="确定" Width="90" Height="32"
-                HorizontalAlignment="Right" Margin="0,16,0,0"
-                IsDefault="True" Click="OkButton_OnClick"/>
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="检查更新" Width="90" Height="32" Margin="0,0,8,0" Click="CheckUpdate_OnClick"/>
+            <Button Content="确定" Width="90" Height="32" IsDefault="True" Click="OkButton_OnClick"/>
+        </StackPanel>
     </Grid>
 </Window>
