@@ -13,9 +13,9 @@
     <Version>1.0.0</Version>
     <FileVersion>1.0.0</FileVersion>
     <InformationalVersion>1.0.0</InformationalVersion>
-    <Company>pengcunfu</Company>
+    <Company>Fireneb-炎序星图</Company>
     <Product>Clipboard</Product>
-    <Copyright>Copyright © 2026 pengcunfu</Copyright>
+    <Copyright>Copyright © 2026 Fireneb-炎序星图</Copyright>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <StartupObject>ClipboardApp.Program</StartupObject>

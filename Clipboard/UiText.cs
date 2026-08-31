@@ -48,7 +48,7 @@ public static class UiText
     public const string BuildVersion = "编译版本";
     public const string BuiltAt = "编译时间";
     public const string Version = "版本";
-    public const string Copyright = "版权所有 © 2026 pengcunfu";
+    public const string Copyright = "版权所有 © 2026 Fireneb-炎序星图";
     public const string About = "关于";
     public const string AboutBody = "一个功能强大的剪贴板历史管理工具\n支持文本和图片的剪贴板历史记录\n\n主要功能:\n· 自动记录剪贴板历史\n· 支持文本和图片\n· 搜索功能\n· 导出历史记录\n· 系统托盘支持";
     public const string NeedModifier = "请至少选择一个修饰键！";
