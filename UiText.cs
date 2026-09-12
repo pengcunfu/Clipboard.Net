@@ -14,6 +14,7 @@ public static class UiText
     public const string CopyImage = "复制图片";
     public const string SaveAs = "另存为...";
     public const string Tip = "提示";
+    public const string AlreadyRunning = "Clipboard 已在运行中！";
     public const string ImageMissing = "图片文件不存在！";
     public const string SaveImage = "保存图片";
     public const string SaveText = "保存文本";
