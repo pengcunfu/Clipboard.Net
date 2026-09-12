@@ -12,9 +12,9 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <RootNamespace>ClipboardApp</RootNamespace>
     <AssemblyName>Clipboard</AssemblyName>
-    <Version>1.2.0</Version>
-    <FileVersion>1.2.0</FileVersion>
-    <InformationalVersion>1.2.0</InformationalVersion>
+    <Version>1.2.1</Version>
+    <FileVersion>1.2.1</FileVersion>
+    <InformationalVersion>1.2.1</InformationalVersion>
     <Company>Fireneb-炎序星图</Company>
     <Product>Clipboard</Product>
     <Copyright>Copyright © 2026 Fireneb-炎序星图</Copyright>
