@@ -49,16 +49,11 @@ dotnet run
 ## GitHub Actions 自动发布
 
 推送形如 `v1.0.0` 的标签，或在 Actions 页面手动运行 **build-release** 工作流，
-即可自动构建并发布到 GitHub Releases（Velopack 打包）：
+即可自动构建并发布单个 exe 到 GitHub Releases：
 
-- 安装版：`Clipboard-win-Setup.exe`，安装后支持**应用内自动更新**（增量下载、自动重启）
-- 便携版：`Clipboard-win-Portable.zip`，解压即用（便携版同样支持检查更新）
-- 更新包：`Clipboard-{版本}-full.nupkg` / `-delta.nupkg` + `RELEASES` 更新清单
+- 产物：`Clipboard-{版本}-win-x64.exe`（框架依赖单文件，体积小；目标机器需已安装 .NET Desktop Runtime）
 
-应用内通过托盘菜单或「关于」对话框的 **检查更新** 检查并安装新版本，更新源即 GitHub Releases。
-增量更新需要上一版本，首次发布无 delta 增量包属正常。
+**升级方式为纯手动替换**：从 Releases 页面下载新版本 exe，退出正在运行的 Clipboard，
+用新文件覆盖旧的 `Clipboard.exe` 即可。程序本身不含自更新机制。
 
 工作流文件：[`.github/workflows/build-release.yml`](.github/workflows/build-release.yml)。
-
-> 注意：从旧版 Inno Setup 安装版升级的用户，需重新运行一次新的 `Clipboard-win-Setup.exe`
-> 才能开启自动更新。

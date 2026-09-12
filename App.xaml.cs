@@ -9,15 +9,6 @@ public partial class App : System.Windows.Application
     {
         AppPaths.MigrateLegacyData();
 
-        if (!string.IsNullOrEmpty(StartupHooks.UpdatedTo))
-        {
-            MessageBox.Show(
-                string.Format(UiText.UpdatedTo, StartupHooks.UpdatedTo),
-                UiText.Tip,
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
-
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
     }

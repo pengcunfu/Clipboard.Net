@@ -101,8 +101,6 @@ public partial class MainWindow : Window
         });
         menu.Items.Add(_trayToggleItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(UiText.CheckForUpdates, null, async (_, _) => await CheckForUpdatesAsync());
-        menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(UiText.Exit, null, (_, _) => QuitApp());
 
         _trayIcon = new Forms.NotifyIcon
@@ -131,49 +129,6 @@ public partial class MainWindow : Window
             if (e.Button == Forms.MouseButtons.Left)
                 ShowMainWindow();
         };
-    }
-
-    private async Task CheckForUpdatesAsync()
-    {
-        var updater = new UpdateService();
-        if (!updater.IsUpdateCapable)
-        {
-            MessageBox.Show(UiText.UpdateNotInstalled, UiText.Tip, MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        UpdateProgressDialog? progressDlg = null;
-        try
-        {
-            var info = await updater.CheckForUpdatesAsync();
-            if (info is null)
-            {
-                MessageBox.Show(UiText.UpdateUpToDate, UiText.Tip, MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var current = updater.CurrentVersion?.ToNormalizedString() ?? VersionInfo.Version;
-            var ask = MessageBox.Show(
-                string.Format(UiText.UpdateAvailable, info.TargetFullRelease.Version.ToNormalizedString(), current),
-                UiText.Tip,
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-            if (ask != MessageBoxResult.Yes)
-                return;
-
-            progressDlg = new UpdateProgressDialog { Owner = this };
-            var downloadTask = updater.DownloadUpdatesAsync(info, new Progress<int>(p => progressDlg.Report(p)));
-            progressDlg.Show();
-            await downloadTask;
-            progressDlg.Close();
-
-            updater.RestartAndApply(info);
-        }
-        catch (Exception ex)
-        {
-            progressDlg?.Close();
-            MessageBox.Show(UiText.UpdateCheckFailed + ex.Message, UiText.UpdateError, MessageBoxButton.OK, MessageBoxImage.Error);
-        }
     }
 
     private void PollClipboard()

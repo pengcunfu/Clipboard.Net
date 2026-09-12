@@ -46,8 +46,6 @@ public static class UiText
     public const string CategoryAll = "全部";
     public const string CategoryText = "仅文本";
     public const string CategoryImage = "仅图片";
-    public const string BuildVersion = "编译版本";
-    public const string BuiltAt = "编译时间";
     public const string Version = "版本";
     public const string Copyright = "版权所有 © 2026 Fireneb-炎序星图";
     public const string About = "关于";
@@ -62,13 +60,4 @@ public static class UiText
     public const string AutostartDisabled = "开机自启动已禁用";
     public const string AutostartEnableFailed = "启用开机自启动失败";
     public const string AutostartDisableFailed = "禁用开机自启动失败";
-    public const string CheckForUpdates = "检查更新";
-    public const string UpdateNotInstalled = "当前为非安装版，无法自动更新。\n请下载安装版 Clipboard-win-Setup.exe。";
-    public const string UpdateAvailable = "发现新版本 {0}（当前 {1}）。\n是否立即下载并安装？";
-    public const string UpdateUpToDate = "已是最新版本。";
-    public const string UpdateDownloading = "正在下载更新：{0}%";
-    public const string UpdateDownloadFailed = "下载更新失败：";
-    public const string UpdateCheckFailed = "检查更新失败：";
-    public const string UpdateError = "更新失败";
-    public const string UpdatedTo = "已更新到版本 {0}。";
 }
