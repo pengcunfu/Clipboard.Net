@@ -82,18 +82,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            var png = AppPaths.ResourcePath(Path.Combine("Assets", "icon.png"));
-            if (!File.Exists(png))
-                png = AppPaths.ResourcePath("icon.png");
-            if (!File.Exists(png))
-                return;
-
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.UriSource = new Uri(png, UriKind.Absolute);
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.EndInit();
-            Icon = bitmap;
+            // 图标已作为 WPF 资源嵌入程序集
+            Icon = new BitmapImage(new Uri("pack://application:,,,/Assets/icon.png"));
         }
         catch
         {
@@ -124,15 +114,10 @@ public partial class MainWindow : Window
 
         try
         {
-            var ico = AppPaths.ResourcePath(Path.Combine("Assets", "icon.ico"));
-            var png = AppPaths.ResourcePath(Path.Combine("Assets", "icon.png"));
-            if (File.Exists(ico))
-                _trayIcon.Icon = new Drawing.Icon(ico);
-            else if (File.Exists(png))
-            {
-                using var bmp = new Drawing.Bitmap(png);
-                _trayIcon.Icon = Drawing.Icon.FromHandle(bmp.GetHicon());
-            }
+            // 图标已作为 WPF 资源嵌入程序集
+            var streamInfo = Application.GetResourceStream(new Uri("pack://application:,,,/Assets/icon.ico"));
+            if (streamInfo is not null)
+                _trayIcon.Icon = new Drawing.Icon(streamInfo.Stream);
             else
                 _trayIcon.Icon = SystemIcons.Application;
         }

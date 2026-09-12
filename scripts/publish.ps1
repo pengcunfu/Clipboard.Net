@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Build and publish Clipboard.Net to the publish folder.
@@ -60,7 +60,9 @@ $publishArgs = @(
     "--self-contained", $scFlag,
     "-o", $OutputDir,
     "/p:PublishSingleFile=true",
-    "/p:IncludeNativeLibrariesForSelfExtract=true"
+    "/p:IncludeNativeLibrariesForSelfExtract=true",
+    "/p:DebugType=None",
+    "/p:DebugSymbols=false"
 )
 
 if ($SelfContained) {
