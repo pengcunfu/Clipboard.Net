@@ -24,13 +24,18 @@ param(
     # exe that does NOT include the .NET runtime.
     [switch]$SelfContained,
 
-    [string]$OutputDir
+    [string]$OutputDir = "publish"
 )
 
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Project = Join-Path $RepoRoot "Clipboard.csproj"
+
+# 输出目录缺省为仓库根目录下 publish/；相对路径一律相对仓库根目录解析
+if (-not [System.IO.Path]::IsPathRooted($OutputDir)) {
+    $OutputDir = Join-Path $RepoRoot $OutputDir
+}
 
 if (-not (Test-Path $Project)) {
     throw "Project file not found: $Project"

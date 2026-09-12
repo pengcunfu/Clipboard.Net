@@ -35,6 +35,8 @@ dotnet run
 .\scripts\publish.ps1
 ```
 
+发布产物为单一 `Clipboard.exe`，输出到仓库根目录的 `publish\`（可用 `-OutputDir` 指定其他位置，
+如 `-OutputDir D:\dist\clipboard`）。
 默认生成单文件 exe（不包含 .NET 运行时，体积小；目标机器需已安装 .NET Desktop Runtime）。
 如需把 .NET 运行时也打进 exe（体积更大，但目标机器无需安装），加 `-SelfContained` 参数：
 
