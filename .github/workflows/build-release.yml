@@ -17,7 +17,7 @@ on:
 env:
   DOTNET_VERSION: '10.0.x'
   SOLUTION: 'Clipboard.slnx'
-  CSPROJ: 'Clipboard/Clipboard.csproj'
+  CSPROJ: 'Clipboard.csproj'
   APP_ID: 'Clipboard'
   PRODUCT_NAME: 'Clipboard'
   COMPANY_NAME: 'Fireneb-炎序星图'
@@ -136,7 +136,7 @@ jobs:
             -e ${{ env.APP_ID }}.exe `
             --packTitle "${{ env.PRODUCT_NAME }}" `
             --packAuthors "${{ env.COMPANY_NAME }}" `
-            -i Clipboard/Assets/icon.ico `
+            -i Assets/icon.ico `
             --framework ${{ env.FRAMEWORK }} `
             --releaseNotes RELEASE_NOTES.md
           if ($LASTEXITCODE -ne 0) { throw "vpk pack 失败" }

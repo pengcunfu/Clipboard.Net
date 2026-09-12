@@ -30,7 +30,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$Project = Join-Path $RepoRoot "Clipboard\Clipboard.csproj"
+$Project = Join-Path $RepoRoot "Clipboard.csproj"
 
 if (-not (Test-Path $Project)) {
     throw "Project file not found: $Project"

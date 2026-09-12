@@ -16,7 +16,7 @@
 ```powershell
 cd Clipboard.Net
 dotnet build
-dotnet run --project Clipboard
+dotnet run
 ```
 
 ## 数据目录
@@ -42,7 +42,7 @@ dotnet run --project Clipboard
 .\scripts\publish.ps1 -SelfContained
 ```
 
-版本号单一维护在 `Clipboard/Clipboard.csproj` 的 `<Version>`（语义化版本），由 git tag 驱动。
+版本号单一维护在 `Clipboard.csproj` 的 `<Version>`（语义化版本），由 git tag 驱动。
 
 ## GitHub Actions 自动发布
 
