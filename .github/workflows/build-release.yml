@@ -90,6 +90,15 @@ jobs:
           Copy-Item "artifacts/publish/${{ env.APP_ID }}.exe" $asset -Force
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $asset).Hash.ToLower()
           "$hash  $([System.IO.Path]::GetFileName($asset))" | Set-Content "$asset.sha256"
+          # 更新清单：应用通过 /releases/latest/download/latest.json 读取（不调用 GitHub API，避免限流）
+          $assetName = [System.IO.Path]::GetFileName($asset)
+          $tag = "v${{ steps.ver.outputs.version }}"
+          $latestJson = @{
+            version = "${{ steps.ver.outputs.version }}"
+            url     = "https://github.com/${{ github.repository }}/releases/download/$tag/$assetName"
+            sha256  = $hash
+          } | ConvertTo-Json
+          Set-Content -LiteralPath "artifacts/publish/latest.json" -Value $latestJson -Encoding UTF8
           echo "asset=$asset" >> $env:GITHUB_OUTPUT
           Get-ChildItem artifacts/publish -File | Select-Object Name, @{N='SizeMB';E={[math]::Round($_.Length/1MB,2)}} | Format-Table -AutoSize
 
@@ -116,7 +125,7 @@ jobs:
         shell: pwsh
         run: |
           gh release create ${{ github.ref_name }} `
-            "${{ steps.asset.outputs.asset }}" "${{ steps.asset.outputs.asset }}.sha256" `
+            "${{ steps.asset.outputs.asset }}" "${{ steps.asset.outputs.asset }}.sha256" "artifacts/publish/latest.json" `
             --repo "${{ github.repository }}" `
             --title "${{ env.PRODUCT_NAME }} ${{ steps.ver.outputs.version }}" `
             --notes-file RELEASE_NOTES.md
@@ -127,5 +136,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PRODUCT_NAME }}-${{ steps.ver.outputs.version }}
-          path: artifacts/publish/${{ env.APP_ID }}-${{ steps.ver.outputs.version }}-win-x64.exe*
+          path: |
+            artifacts/publish/${{ env.APP_ID }}-${{ steps.ver.outputs.version }}-win-x64.exe*
+            artifacts/publish/latest.json
           retention-days: 30
