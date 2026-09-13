@@ -1,4 +1,4 @@
-# GitHub Actions 发布流水线（.NET，无自更新，手动替换 exe 升级）
+# GitHub Actions 发布流水线（.NET，单文件 exe + SHA256 校验，应用内置自研更新器）
 # 触发：推送 v* tag 自动发布单个 exe 到 GitHub Release；workflow_dispatch 仅构建产物（不发 Release）。
 
 name: build-release
@@ -62,7 +62,7 @@ jobs:
         run: |
           dotnet restore ${{ env.SOLUTION }}
 
-      # 框架依赖单文件（不打包 .NET，目标机器需预装 .NET Desktop Runtime）
+      # 框架依赖单文件（不打包 .NET，体积小；目标机器需已安装 .NET Desktop Runtime）
       - name: 发布框架依赖单文件版本
         shell: pwsh
         run: |
@@ -79,7 +79,7 @@ jobs:
             --nologo
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
-      - name: 清理发布目录、校验产物并生成版本化文件名
+      - name: 清理发布目录、校验产物并生成版本化文件名与 SHA256
         id: asset
         shell: pwsh
         run: |
@@ -88,6 +88,8 @@ jobs:
           if (-not (Test-Path "artifacts/publish/${{ env.APP_ID }}.exe")) { throw "${{ env.APP_ID }}.exe 未生成" }
           $asset = "artifacts/publish/${{ env.APP_ID }}-${{ steps.ver.outputs.version }}-win-x64.exe"
           Copy-Item "artifacts/publish/${{ env.APP_ID }}.exe" $asset -Force
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $asset).Hash.ToLower()
+          "$hash  $([System.IO.Path]::GetFileName($asset))" | Set-Content "$asset.sha256"
           echo "asset=$asset" >> $env:GITHUB_OUTPUT
           Get-ChildItem artifacts/publish -File | Select-Object Name, @{N='SizeMB';E={[math]::Round($_.Length/1MB,2)}} | Format-Table -AutoSize
 
@@ -113,7 +115,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          gh release create ${{ github.ref_name }} "${{ steps.asset.outputs.asset }}" `
+          gh release create ${{ github.ref_name }} `
+            "${{ steps.asset.outputs.asset }}" "${{ steps.asset.outputs.asset }}.sha256" `
             --repo "${{ github.repository }}" `
             --title "${{ env.PRODUCT_NAME }} ${{ steps.ver.outputs.version }}" `
             --notes-file RELEASE_NOTES.md
@@ -124,5 +127,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PRODUCT_NAME }}-${{ steps.ver.outputs.version }}
-          path: artifacts/publish/${{ env.APP_ID }}-${{ steps.ver.outputs.version }}-win-x64.exe
+          path: artifacts/publish/${{ env.APP_ID }}-${{ steps.ver.outputs.version }}-win-x64.exe*
           retention-days: 30

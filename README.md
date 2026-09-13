@@ -49,11 +49,15 @@ dotnet run
 ## GitHub Actions 自动发布
 
 推送形如 `v1.0.0` 的标签，或在 Actions 页面手动运行 **build-release** 工作流，
-即可自动构建并发布单个 exe 到 GitHub Releases：
+即可自动构建并发布到 GitHub Releases：
 
-- 产物：`Clipboard-{版本}-win-x64.exe`（框架依赖单文件，体积小；目标机器需已安装 .NET Desktop Runtime）
+- 产物：`Clipboard-{版本}-win-x64.exe`（框架依赖单文件，目标机器需已安装 .NET Desktop Runtime）
+- 校验：同名 `.sha256` 文件（下载时做完整性校验）
 
-**升级方式为纯手动替换**：从 Releases 页面下载新版本 exe，退出正在运行的 Clipboard，
-用新文件覆盖旧的 `Clipboard.exe` 即可。程序本身不含自更新机制。
+**应用内置自研更新器**（不依赖第三方库），更新源即 GitHub Releases：
+- 启动时后台静默检查更新，发现新版本弹窗询问；也可通过托盘菜单或「关于」对话框手动「检查更新」
+- 下载并 SHA256 校验后，自动备份当前 exe（`Clipboard.exe.bak`）、原地替换并重启
+- **看门狗自动回滚**：新版本启动失败（进程崩溃或 30 秒内未就绪）时，自动恢复上一版本并重启
+- 托盘菜单提供「回滚到上一版本」手动回滚入口
 
 工作流文件：[`.github/workflows/build-release.yml`](.github/workflows/build-release.yml)。

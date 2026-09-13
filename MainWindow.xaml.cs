@@ -101,6 +101,9 @@ public partial class MainWindow : Window
         });
         menu.Items.Add(_trayToggleItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Items.Add(UiText.CheckForUpdates, null, async (_, _) => await UpdateService.CheckAndApplyAsync(silent: false, owner: this));
+        menu.Items.Add(UiText.Rollback, null, (_, _) => new UpdateService().RollbackAndRestart());
+        menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(UiText.Exit, null, (_, _) => QuitApp());
 
         _trayIcon = new Forms.NotifyIcon
@@ -263,6 +266,9 @@ public partial class MainWindow : Window
         _reallyExit = true;
         Application.Current.Shutdown();
     }
+
+    /// <summary>供更新流程调用：绕过「关闭时隐藏到托盘」拦截，让 Application.Shutdown() 真正退出进程。</summary>
+    internal void SetReallyExit() => _reallyExit = true;
 
     private void MainWindow_OnClosing(object? sender, CancelEventArgs e)
     {

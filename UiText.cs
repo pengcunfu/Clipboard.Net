@@ -60,4 +60,16 @@ public static class UiText
     public const string AutostartDisabled = "开机自启动已禁用";
     public const string AutostartEnableFailed = "启用开机自启动失败";
     public const string AutostartDisableFailed = "禁用开机自启动失败";
+    public const string CheckForUpdates = "检查更新";
+    public const string UpdateAvailable = "发现新版本 {0}（当前 {1}）。\n是否立即下载并安装？";
+    public const string UpdateUpToDate = "已是最新版本。";
+    public const string UpdateDownloading = "正在下载更新：{0}%";
+    public const string UpdateDownloadFailed = "下载更新失败：";
+    public const string UpdateCheckFailed = "检查更新失败：";
+    public const string UpdateError = "更新失败";
+    public const string UpdatedTo = "已更新到版本 {0}。";
+    public const string Rollback = "回滚到上一版本";
+    public const string NoRollbackBackup = "没有可回滚的版本备份。";
+    public const string UpdateRolledBack = "更新到版本 {0} 失败，已回滚到版本 {1}。";
+    public const string RolledBack = "已回滚到上一版本。";
 }

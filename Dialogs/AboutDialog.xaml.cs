@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Documents;
+using ClipboardApp.Services;
 
 namespace ClipboardApp.Dialogs;
 
@@ -45,4 +46,7 @@ public partial class AboutDialog : Window
     {
         DialogResult = true;
     }
+
+    private async void CheckUpdate_OnClick(object sender, RoutedEventArgs e)
+        => await UpdateService.CheckAndApplyAsync(silent: false, owner: this);
 }
