@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ClipboardApp.Services;
 
@@ -64,24 +65,29 @@ public static class Updater
 
         WaitForExit(pid);
 
+        // 0. 更新后 exe 名跟随新版本号（Clipboard-1.3.3-win-x64.exe → Clipboard-1.3.4-win-x64.exe）。
+        //    避免把新版本二进制写到旧文件名上，导致文件名残留旧版本号。
+        string targetExe = VersionedExePath(exePath, toVer);
+
         // 1. 备份旧 exe（运行中 exe 可改名，不可覆盖）
         if (File.Exists(bak)) File.Delete(bak);
         File.Move(exePath, bak);
         Log($"已备份旧版本 -> {Path.GetFileName(bak)}");
 
-        // 2. 放入新 exe 并清理临时文件
+        // 2. 放入新 exe（写往新版本规范名）并清理临时文件
         if (string.IsNullOrEmpty(newExe) || !File.Exists(newExe))
             throw new InvalidOperationException($"找不到新版本文件: {newExe}");
-        File.Copy(newExe, exePath, overwrite: true);
+        File.Copy(newExe, targetExe, overwrite: true);
         TryDelete(newExe);
-        Log("已就位新版本");
+        Log("已就位新版本 " + Path.GetFileName(targetExe));
 
         // 3. 清除旧的就绪标记并启动新版本
         TryDelete(marker);
-        using var proc = StartProcess(exePath, $"--updated-to {toVer}", out var err);
+        using var proc = StartProcess(targetExe, $"--updated-to {toVer}", out var err);
         if (proc is null)
         {
             Log("启动新版本失败: " + err);
+            TryDelete(targetExe);
             RestoreBackupAndRelaunch(exePath, bak, $"--rollback-from {toVer} --rollback-to {fromVer}");
             return 1;
         }
@@ -94,6 +100,7 @@ public static class Updater
             if (HasExited(proc))
             {
                 Log("新版本进程提前退出，回滚");
+                TryDelete(targetExe);
                 RestoreBackupAndRelaunch(exePath, bak, $"--rollback-from {toVer} --rollback-to {fromVer}");
                 return 1;
             }
@@ -109,6 +116,7 @@ public static class Updater
         // 5. 超时未就绪：视为失败，回滚
         Log("看门狗超时未就绪，回滚");
         Kill(proc);
+        TryDelete(targetExe);
         RestoreBackupAndRelaunch(exePath, bak, $"--rollback-from {toVer} --rollback-to {fromVer}");
         return 1;
     }
@@ -118,22 +126,27 @@ public static class Updater
         Log("手动回滚开始");
         WaitForExit(ParsePid(args));
 
-        if (!File.Exists(bak))
+        // 备份名带旧版本号（Clipboard-1.3.3-win-x64.exe.bak），不能用 exePath+".bak" 推断，
+        // 需在目录里定位最新的 .bak（可能残留历史备份）。
+        var dir = Path.GetDirectoryName(exePath) ?? "";
+        var found = FindBackup(dir);
+        if (found is null)
         {
             Log("没有可回滚的备份");
             return 1;
         }
+        string oldExe = found[..^BakSuffix.Length]; // 去掉 ".bak" = 旧版本 exe 名
 
-        // 当前 exe 正被本进程运行，先改名腾位，再恢复备份
+        // 当前 exe 正被本进程运行，先改名腾位，再把备份恢复到旧版本 exe 名
         TryDelete(marker);
         string tmp = exePath + ".rollback";
         if (File.Exists(tmp)) File.Delete(tmp);
         File.Move(exePath, tmp);
-        File.Move(bak, exePath);
+        File.Move(found, oldExe);
         TryDelete(tmp); // 尽力清理；失败时残留文件由下次 apply 覆盖
-        Log("已恢复备份");
+        Log("已恢复备份 -> " + Path.GetFileName(oldExe));
 
-        StartProcess(exePath, "--manual-rollback", out _);
+        StartProcess(oldExe, "--manual-rollback", out _);
         return 0;
     }
 
@@ -229,6 +242,27 @@ public static class Updater
 
     private static int ParsePid(string[] args)
         => int.TryParse(GetArg(args, "--pid"), out var pid) ? pid : 0;
+
+    /// <summary>更新后 exe 名跟随新版本号：把文件名里的版本号片段换为 toVer（Clipboard-1.3.3-win-x64.exe → Clipboard-1.3.4-win-x64.exe）。
+    /// 用正则替换而非 fromVer（兼容历史陈旧文件名：之前 bug 会把新版本写到旧名上，文件名不含 fromVer）。</summary>
+    private static string VersionedExePath(string currentExe, string toVer)
+    {
+        string dir = Path.GetDirectoryName(currentExe) ?? "";
+        string fn = Path.GetFileName(currentExe);
+        string newFn = Regex.Replace(fn, @"-\d+(\.\d+)+-", $"-{toVer}-");
+        return Path.Combine(dir, newFn);
+    }
+
+    /// <summary>定位目录下最新（按修改时间）的 .bak 备份，即上一版本 exe 备份。</summary>
+    private static string? FindBackup(string dir)
+    {
+        string[] files;
+        try { files = Directory.GetFiles(dir, "*" + BakSuffix); }
+        catch { return null; }
+        return files.Length == 0
+            ? null
+            : files.OrderByDescending(File.GetLastWriteTimeUtc).First();
+    }
 
     private static int Fail(string message)
     {

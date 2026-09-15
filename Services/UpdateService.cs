@@ -110,8 +110,9 @@ public sealed class UpdateService
     /// <summary>启动内嵌更新器恢复上一版本备份，随后请求本进程干净退出；无备份时提示并返回 false。</summary>
     public bool RollbackAndRestart()
     {
-        var bak = Path.Combine(AppContext.BaseDirectory, "Clipboard.exe.bak");
-        if (!File.Exists(bak))
+        // 备份名带版本号（Clipboard-1.3.3-win-x64.exe.bak），不能用固定 "Clipboard.exe.bak" 判断
+        var baks = Directory.GetFiles(AppContext.BaseDirectory, "*.exe.bak");
+        if (baks.Length == 0)
         {
             MessageBox.Show(UiText.NoRollbackBackup, UiText.Tip, MessageBoxButton.OK, MessageBoxImage.Information);
             return false;
