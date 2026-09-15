@@ -27,8 +27,19 @@ public sealed class UpdateService
         if (string.IsNullOrWhiteSpace(url))
             url = LatestManifestUrl;
 
-        var manifest = JsonSerializer.Deserialize<UpdateManifest>(await Http.GetStringAsync(url), JsonOpts)
-            ?? throw new InvalidOperationException("无法解析更新清单 latest.json");
+        // 网络/HTTP 错误（HttpRequestException）或 JSON 解析失败（JsonException）统一转为友好中文提示，
+        // 避免把原始英文异常（如“Response status code does not indicate success: 404”）抛给 UI。
+        UpdateManifest manifest;
+        try
+        {
+            var json = await Http.GetStringAsync(url);
+            manifest = JsonSerializer.Deserialize<UpdateManifest>(json, JsonOpts)
+                ?? throw new JsonException("清单内容为 null");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
+        {
+            throw new InvalidOperationException($"无法解析更新清单：{url}", ex);
+        }
 
         var newVer = manifest.Version?.Trim() ?? "";
         if (newVer.Length == 0)
